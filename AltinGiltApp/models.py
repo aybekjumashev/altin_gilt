@@ -1,6 +1,7 @@
 # AltinGiltApp/models.py
 from django.db import models
 from django.contrib.auth.models import User # Django'ning standart User modelini import qilamiz
+from django.utils.translation import gettext_lazy as _
 
 class Elon(models.Model):
     nomi = models.CharField(max_length=200)
@@ -25,6 +26,24 @@ class Elon(models.Model):
     # Yaratilgan va yangilangan vaqtni avtomatik saqlash (ixtiyoriy, lekin foydali)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class StatusChoices(models.TextChoices):
+        PENDING = 'PENDING', _('Moderatsiyada')
+        APPROVED = 'APPROVED', _('Tasdiqlangan')
+        REJECTED = 'REJECTED', _('Rad etilgan')
+        DRAFT = 'DRAFT', _('Qoralama') # Agar kerak bo'lsa
+
+    status = models.CharField(
+        max_length=10,
+        choices=StatusChoices.choices,
+        default=StatusChoices.PENDING,
+        db_index=True # Status bo'yicha tez-tez filter qilinadi
+    )
+    
+    moderation_notes = models.TextField(
+        blank=True, null=True, # Faqat rad etilganda to'ldiriladi
+        verbose_name=_("Moderator izohi (rad etish sababi)")
+    )
 
     def __str__(self):
         # Bu metod admin panelida va boshqa joylarda obyektni oson tanish uchun ishlatiladi

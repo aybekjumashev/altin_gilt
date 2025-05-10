@@ -12,16 +12,13 @@ from django.db import transaction # Bir nechta DB operatsiyalarini atomik qilish
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 def bosh_sahifa(request):
-    # Oxirgi 3 ta e'lonni olish (yoki boshqa mezon bo'yicha)
-    elonlar = Elon.objects.order_by('-created_at')[:3]
-    context = {
-        'elonlar': elonlar,
-    }
-    # Shablonni render qilish va javob qaytarish
+    elonlar = Elon.objects.filter(status=Elon.StatusChoices.APPROVED).order_by('-created_at')[:3]
+    context = {'elonlar': elonlar}
     return render(request, 'altingiltapp/index.html', context)
 
+
 def elonlar_sahifasi(request):
-    elonlar_list = Elon.objects.order_by('-created_at')
+    elonlar_list = Elon.objects.filter(status=Elon.StatusChoices.APPROVED).order_by('-created_at')
     shahar = request.GET.get('shahar')
     tur = request.GET.get('tur')
 
@@ -48,80 +45,124 @@ def elonlar_sahifasi(request):
         'page_obj': elonlar, # Shablon standart nomni ishlatishi uchun
         'selected_shahar': shahar,
         'selected_tur': tur,
+        'ElonStatusChoices': Elon.StatusChoices 
     }
     return render(request, 'altingiltapp/elonlar.html', context)
 
+
+# Alohida e'lon sahifasi
 def elon_sahifasi(request, elon_id):
-    # E'lonni ID bo'yicha topish, topilmasa 404 xato qaytarish
-    elon = get_object_or_404(Elon, pk=elon_id) # pk - primary key (id)
-    context = {
-        'elon': elon,
-    }
+    # Faqat tasdiqlangan e'lonlarni ko'rsatish, yoki agar foydalanuvchi o'zining e'lonini ko'rayotgan bo'lsa
+    elon = get_object_or_404(Elon, pk=elon_id)
+    
+    if elon.status == Elon.StatusChoices.APPROVED or elon.user == request.user:
+        # Agar e'lon egasi bo'lsa yoki tasdiqlangan bo'lsa ko'rsatamiz
+        pass
+    else:
+        # Agar tasdiqlanmagan va egasi bo'lmasa, 404 qaytaramiz
+        # Yoki boshqa sahifaga yo'naltirish mumkin
+        from django.http import Http404
+        raise Http404("E'lon topilmadi yoki hali tasdiqlanmagan.")
+        
+    context = {'elon': elon}
     return render(request, 'altingiltapp/elon.html', context)
 
 
 
+
+# E'lon qo'shish
 @login_required
-def elon_qoshish(request):
-    # Inline Formset: Elon va unga bog'liq Rasmlar uchun juda qulay
-    # extra=5: Standart 5 ta bo'sh rasm formasi chiqaradi
-    # max_num=10: Maksimal 10 ta rasm yuklash mumkin
-    # min_num=3: Kamida 3 ta rasm yuklanishini talab qiladi (agar kerak bo'lsa)
-    # can_delete=False: Yangi e'lon qo'shishda o'chirish checkboxi kerak emas
+def elon_qoshish(request): # elon_tahrirlash uchun ham shu viewni moslashtiramiz keyinroq
     RasmInlineFormSet = inlineformset_factory(
         Elon, Rasm, form=RasmForm,
-        extra=5, max_num=10, min_num=3, # Kamida 3 ta rasm talabini qo'shdik
-        validate_min=True, # min_num ni tekshirishni aktivlashtiradi
-        can_delete=False
+        extra=5, max_num=10, min_num=3,
+        validate_min=True, can_delete=False
     )
 
     if request.method == 'POST':
-        # Elon formasini POST ma'lumotlari bilan to'ldirish
         elon_form = ElonForm(request.POST)
-        # Formsetni POST ma'lumotlari va yuklangan fayllar bilan to'ldirish
-        # instance=Elon() kerak emas, chunki hali saqlanmagan
         formset = RasmInlineFormSet(request.POST, request.FILES)
 
-        # Elon formasi va Formset valid (to'g'ri) ekanligini tekshirish
         if elon_form.is_valid() and formset.is_valid():
             try:
-                # Atomik tranzaksiya: Elon yoki Rasm saqlashda xatolik bo'lsa, hammasi bekor qilinadi
                 with transaction.atomic():
-                    # 1. Elonni saqlash (lekin hali commit qilmaslik)
-                    #    Foydalanuvchini avtomatik bog'lash
                     new_elon = elon_form.save(commit=False)
                     new_elon.user = request.user
-                    new_elon.save() # Endi Elon bazaga saqlanadi va ID oladi
+                    new_elon.status = Elon.StatusChoices.PENDING # Avtomatik moderatsiyaga
+                    new_elon.moderation_notes = None # Eski izohlarni tozalash (tahrir uchun kerak bo'ladi)
+                    new_elon.save()
 
-                    # 2. Formsetni saqlash
-                    #    instance=new_elon: har bir Rasm obyektini shu yangi e'longa bog'laydi
                     formset.instance = new_elon
                     formset.save()
-
-                messages.success(request, "E'lon va rasmlar muvaffaqiyatli qo'shildi!")
-                # Foydalanuvchini yangi qo'shilgan e'lon sahifasiga yo'naltirish
-                return redirect('AltinGiltApp:elon_detail', elon_id=new_elon.id)
-
+                messages.success(request, "E'lon moderatsiyaga muvaffaqiyatli yuborildi!")
+                return redirect('AltinGiltApp:shaxsiy_kabinet') # Kabinetga yo'naltirish yaxshiroq
             except Exception as e:
-                # Agar tranzaksiya ichida xatolik bo'lsa
                 messages.error(request, f"E'lonni saqlashda xatolik yuz berdi: {e}")
-                # Formani va formsetni xatolar bilan qayta ko'rsatish uchun pastga tushamiz
-
-        else: # Agar form yoki formset valid bo'lmasa
-            # Xatoliklarni ko'rsatish uchun xabar (ixtiyoriy, chunki forma o'zi xatolarni ko'rsatadi)
+        else:
             messages.error(request, "Iltimos, formadagi xatoliklarni to'g'rilang.")
-            # Shablon xatoliklarni form/formset orqali ko'rsatadi
-
-    else: # GET request (sahifa birinchi marta ochilganda)
+    else:
         elon_form = ElonForm()
-        # Bo'sh formset yaratish (instance ko'rsatilmaydi)
         formset = RasmInlineFormSet()
 
     context = {
         'elon_form': elon_form,
         'formset': formset,
+        'form_title': "Yangi E'lon Joylashtirish",
+        'submit_button_text': "Moderatsiyaga Yuborish"
     }
     return render(request, 'altingiltapp/elon_qoshish.html', context)
+
+
+
+# Keling, tahrirlash viewini ham qo'shamiz
+@login_required
+def elon_tahrirlash(request, elon_id):
+    elon = get_object_or_404(Elon, pk=elon_id, user=request.user) # Faqat o'zining e'lonini tahrirlay olsin
+
+    RasmInlineFormSet = inlineformset_factory(
+        Elon, Rasm, form=RasmForm,
+        extra=3, max_num=10, min_num=0, # Tahrirda minimal rasm 0 bo'lishi mumkin (agar hammasini o'chirmoqchi bo'lsa)
+        validate_min=False, # Minimalni tekshirmaymiz, chunki mavjudlari bor bo'lishi mumkin
+        can_delete=True # Rasmlarni o'chirish imkoniyati
+    )
+
+    if request.method == 'POST':
+        elon_form = ElonForm(request.POST, instance=elon)
+        formset = RasmInlineFormSet(request.POST, request.FILES, instance=elon)
+
+        if elon_form.is_valid() and formset.is_valid():
+            try:
+                with transaction.atomic():
+                    edited_elon = elon_form.save(commit=False)
+                    # Agar e'lon avval rad etilgan bo'lsa yoki shunchaki tahrirlansa, qayta moderatsiyaga
+                    edited_elon.status = Elon.StatusChoices.PENDING
+                    edited_elon.moderation_notes = None # Eski izohlarni tozalash
+                    edited_elon.save() # ElonForm'dagi o'zgarishlarni saqlash
+
+                    formset.save() # Rasmlardagi o'zgarishlarni saqlash
+
+                messages.success(request, "E'lon muvaffaqiyatli tahrirlandi va qayta moderatsiyaga yuborildi.")
+                return redirect('AltinGiltApp:shaxsiy_kabinet')
+            except Exception as e:
+                messages.error(request, f"E'lonni tahrirlashda xatolik yuz berdi: {e}")
+        else:
+            messages.error(request, "Iltimos, formadagi xatoliklarni to'g'rilang.")
+    else: # GET request
+        elon_form = ElonForm(instance=elon)
+        formset = RasmInlineFormSet(instance=elon)
+
+    context = {
+        'elon_form': elon_form,
+        'formset': formset,
+        'elon': elon, # Shablon uchun
+        'form_title': f"'{elon.nomi}' e'lonini tahrirlash",
+        'submit_button_text': "O'zgarishlarni Saqlash"
+    }
+    # elon_qoshish.html shablonini qayta ishlatamiz
+    return render(request, 'altingiltapp/elon_qoshish.html', context) 
+
+
+
 
 
 def register_view(request):
@@ -173,19 +214,24 @@ def login_view(request):
     }
     return render(request, 'registration/login.html', context) # Shablon joylashuvi
 
+
+
+
+
 def logout_view(request):
     logout(request)
     messages.success(request, "Tizimdan muvaffaqiyatli chiqdingiz.")
     return redirect('AltinGiltApp:bosh_sahifa') # Bosh sahifaga qaytish
 
+
+# Shaxsiy kabinet
 @login_required
 def shaxsiy_kabinet(request):
-    # Joriy foydalanuvchining e'lonlarini olish
     elonlar = Elon.objects.filter(user=request.user).order_by('-created_at')
     context = {
         'elonlar': elonlar,
-        # request.user shablonda avtomatik mavjud bo'ladi, lekin aniqlik uchun qo'shish mumkin
-        'user': request.user
+        'user': request.user,
+        'ElonStatusChoices': Elon.StatusChoices # Statuslarni shablonda taqqoslash uchun
     }
     return render(request, 'altingiltapp/shaxsiy_kabinet.html', context)
 

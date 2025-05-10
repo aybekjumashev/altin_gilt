@@ -34,12 +34,12 @@
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <span><i class="bi bi-calendar-check-fill me-2 text-secondary"></i>Ro'yxatdan o'tgan:</span>
-                            <span class="text-end text-muted">{{ user.date_joined|date:"d M Y" }}</span>
+                            <span class="text-end text-muted">{{ user.date_joined|date:"d M Y, H:i" }}</span>
                         </li>
                     </ul>
                      <div class="mt-3 d-grid"> <!-- Tugma uchun -->
-                        <a href="#" class="btn btn-outline-primary">
-                             <i class="bi bi-pencil-square me-1"></i> Profilni Tahrirlash
+                        <a href="#" class="btn btn-outline-primary disabled"> <!-- Hali funksional emas -->
+                             <i class="bi bi-pencil-square me-1"></i> Profilni Tahrirlash (Tez kunda)
                         </a>
                      </div>
                 </div>
@@ -60,26 +60,26 @@
                 <div class="row row-cols-1 row-cols-md-2 g-4"> <!-- 2 ustunli layout -->
                     {% for elon in elonlar %}
                     <div class="col">
-                        <div class="card h-100 shadow-sm border-0 listing-card position-relative"> <!-- listing-card klassi va position-relative -->
-                            <div class="position-absolute top-0 end-0 m-2" style="z-index: 10;"> <!-- Tahrirlash/O'chirish tugmalari uchun joy -->
+                        <div class="card h-100 shadow-sm border-0 listing-card position-relative">
+                            <div class="position-absolute top-0 end-0 m-2" style="z-index: 10;">
                                 <div class="dropdown">
                                     <button class="btn btn-sm btn-light bg-white rounded-circle" type="button" id="dropdownMenuButton{{ elon.id }}" data-bs-toggle="dropdown" aria-expanded="false">
                                         <i class="bi bi-three-dots-vertical"></i>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton{{ elon.id }}">
                                         <li>
-                                            <a class="dropdown-item" href="#"> <!-- EDIT URL -->
+                                            <a class="dropdown-item" href="{% url 'AltinGiltApp:elon_edit' elon.id %}">
                                                 <i class="bi bi-pencil-square me-2 text-warning"></i>Tahrirlash
                                             </a>
                                         </li>
                                         <li>
-                                            <a class="dropdown-item" href="#" onclick="confirmDelete('{{ elon.id }}', '{{ elon.nomi|escapejs }}')"> <!-- DELETE URL (JavaScript bilan) -->
+                                            <a class="dropdown-item" href="#" onclick="confirmDelete('{{ elon.id }}', '{{ elon.nomi|escapejs }}')">
                                                  <i class="bi bi-trash3 me-2 text-danger"></i>O'chirish
                                             </a>
-                                            <!-- O'chirish uchun yashirin forma -->
-                                            <form id="delete-form-{{ elon.id }}" action="#" method="POST" style="display: none;"> <!-- DELETE URL ACTION -->
+                                            <!-- O'chirish uchun yashirin forma (hozircha ishlamaydi, view kerak) -->
+                                            <form id="delete-form-{{ elon.id }}" action="#" method="POST" style="display: none;">
                                                 {% csrf_token %}
-                                                <input type="hidden" name="_method" value="DELETE"> <!-- Agar REST framework ishlatilsa -->
+                                                <!-- <input type="hidden" name="_method" value="DELETE"> -->
                                             </form>
                                         </li>
                                     </ul>
@@ -97,14 +97,36 @@
                                 {% else %}
                                      <img src="{% static 'images/placeholder.png' %}" alt="Rasm yo'q" class="card-img-top" style="height: 200px; object-fit: cover;">
                                 {% endif %}
-                                <span class="badge bg-info text-dark position-absolute bottom-0 start-0 ms-2 mb-2 fs-6">{{ elon.get_turi_display }}</span> <!-- Tur uchun badge (pastda) -->
+                                <!-- Status Badge -->
+                                {% if elon.status == ElonStatusChoices.PENDING %}
+                                    <span class="badge bg-warning text-dark position-absolute bottom-0 start-0 ms-2 mb-2 fs-6" data-bs-toggle="tooltip" title="Bu e'lon moderator tomonidan ko'rib chiqilmoqda">
+                                        <i class="bi bi-hourglass-split me-1"></i>{{ elon.get_status_display }}
+                                    </span>
+                                {% elif elon.status == ElonStatusChoices.APPROVED %}
+                                    <span class="badge bg-success position-absolute bottom-0 start-0 ms-2 mb-2 fs-6" data-bs-toggle="tooltip" title="Bu e'lon tasdiqlangan va saytda ko'rsatilmoqda">
+                                        <i class="bi bi-check-circle-fill me-1"></i>{{ elon.get_status_display }}
+                                    </span>
+                                {% elif elon.status == ElonStatusChoices.REJECTED %}
+                                    <span class="badge bg-danger position-absolute bottom-0 start-0 ms-2 mb-2 fs-6" data-bs-toggle="tooltip" title="Bu e'lon rad etilgan. Sababini ko'rish uchun 'Ko'rish' tugmasini bosing yoki tahrirlang.">
+                                        <i class="bi bi-x-octagon-fill me-1"></i>{{ elon.get_status_display }}
+                                    </span>
+                                {% endif %}
                             </div>
-                            <div class="card-body d-flex flex-column pb-2"> <!-- Pastki padding kamaytirildi -->
+                            <div class="card-body d-flex flex-column pb-2">
                                 <h5 class="card-title mb-1">{{ elon.nomi }}</h5>
                                 <p class="text-muted small mb-2">
                                     <i class="bi bi-geo-alt-fill text-secondary"></i> {{ elon.joylashuvi }}
                                 </p>
-                                <!-- <p class="card-text small text-secondary flex-grow-1">{{ elon.batafsil|truncatewords_html:12 }}</p> -->
+
+                                {% if elon.status == ElonStatusChoices.REJECTED and elon.moderation_notes %}
+                                <div class="alert alert-danger small p-2 mb-2" role="alert">
+                                    <strong>Rad etish sababi:</strong> {{ elon.moderation_notes|truncatewords:15|linebreaksbr }}
+                                    {% if elon.moderation_notes|wordcount > 15 %}
+                                        <a href="{% url 'AltinGiltApp:elon_detail' elon.id %}" class="text-danger small"> (batafsil)</a>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+
                                 <div class="d-flex justify-content-between align-items-center mt-auto pt-2">
                                     <h5 class="text-primary fw-bold mb-0">{{ elon.narxi }} so'm</h5>
                                     <a href="{% url 'AltinGiltApp:elon_detail' elon.id %}" class="btn btn-outline-primary btn-sm stretched-link">
@@ -112,19 +134,35 @@
                                     </a>
                                 </div>
                             </div>
-                            <div class="card-footer bg-white border-top-0 text-muted small pt-0"> <!-- Yuqori padding olindi -->
-                               <i class="bi bi-clock me-1"></i>Qo'shildi: {{ elon.created_at }}
+                            <div class="card-footer bg-white border-top-0 text-muted small pt-0">
+                               <i class="bi bi-clock me-1"></i>Qo'shildi: {{ elon.created_at|date:"d M Y, H:i" }}
                             </div>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
-                 <!-- Pagination (agar e'lonlar ko'p bo'lsa) -->
+                 <!-- Pagination (agar e'lonlar ko'p bo'lsa va pagination qo'shilsa) -->
                 {% if page_obj and page_obj.has_other_pages %}
                 <nav aria-label="Sahifalash" class="mt-4">
                     <ul class="pagination justify-content-center">
                         <!-- Pagination logikasi elonlar.html dan ko'chiriladi -->
-                        ...
+                        {% if page_obj.has_previous %}
+                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">«</a></li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">«</span></li>
+                        {% endif %}
+                        {% for i in page_obj.paginator.page_range %}
+                            {% if page_obj.number == i %}
+                                <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                            {% else %}
+                                <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if page_obj.has_next %}
+                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">»</a></li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">»</span></li>
+                        {% endif %}
                     </ul>
                 </nav>
                 {% endif %}
@@ -153,9 +191,17 @@
 // O'chirishni tasdiqlash funksiyasi
 function confirmDelete(elonId, elonNomi) {
     if (confirm(`Haqiqatan ham "${elonNomi}" nomli e'lonni o'chirmoqchimisiz? Bu amalni bekor qilib bo'lmaydi.`)) {
-        document.getElementById('delete-form-' + elonId).submit();
+        // Hali o'chirish viewi yo'q, shuning uchun formani submit qilmaymiz
+        // document.getElementById('delete-form-' + elonId).submit();
+        alert("E'lonni o'chirish funksiyasi hali to'liq sozlanmagan. Administrator bilan bog'laning.");
     }
 }
+
+// Bootstrap Tooltip'larni aktivlashtirish
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+  return new bootstrap.Tooltip(tooltipTriggerEl)
+})
 </script>
 {% endblock %}
 
@@ -169,11 +215,10 @@ function confirmDelete(elonId, elonNomi) {
         transform: translateY(-5px);
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
     }
-    /* Dropdown tugmasini chiroyliroq qilish */
     .listing-card .dropdown-toggle::after {
-        display: none; /* Bootstrap strelkasini olib tashlash */
+        display: none;
     }
-     .listing-card .btn-light { /* Dropdown tugmasi foni */
+     .listing-card .btn-light {
         --bs-btn-bg: rgba(255, 255, 255, 0.8);
         --bs-btn-border-color: rgba(0, 0, 0, 0.1);
         --bs-btn-hover-bg: rgba(255, 255, 255, 1);

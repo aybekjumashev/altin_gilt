@@ -15,6 +15,7 @@ urlpatterns = [
     path('elonlar/<int:elon_id>/', views.elon_sahifasi, name='elon_detail'),
     # Yangi e'lon qo'shish sahifasi (masalan, http://127.0.0.1:8000/elon_qoshish/)
     path('elon_qoshish/', views.elon_qoshish, name='elon_create'),
+    path('elon_tahrirlash/<int:elon_id>/', views.elon_tahrirlash, name='elon_edit'), # YANGI URL
     # Ro'yxatdan o'tish sahifasi (masalan, http://127.0.0.1:8000/register/)
     path('register/', views.register_view, name='register'), # view nomini 'register' dan o'zgartirdik, Django o'zida shunday nom bor
     # Kirish sahifasi (masalan, http://127.0.0.1:8000/login/)

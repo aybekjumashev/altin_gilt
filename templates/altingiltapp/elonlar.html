@@ -82,8 +82,9 @@
 
             <!-- E'lonlar Ro'yxati -->
             <div class="col-lg-9">
-                <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4"> <!-- 3 ustunli layout (xl uchun) -->
+                 <!-- 3 ustunli layout (xl uchun) -->
                     {% if elonlar %}
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
                         {% for elon in elonlar %}
                         <div class="col">
                             <div class="card h-100 shadow-sm border-0 listing-card">
@@ -121,6 +122,7 @@
                             </div>
                         </div>
                         {% endfor %}
+                    </div>
                     {% else %}
                         <div class="col-12">
                             <div class="alert alert-warning text-center" role="alert">
@@ -131,7 +133,6 @@
                             </div>
                         </div>
                     {% endif %}
-                </div>
 
                 <!-- Pagination Placeholder -->
                 {% if is_paginated %} <!-- Kelajakda view'da is_paginated o'zgaruvchisi bo'lishi mumkin -->

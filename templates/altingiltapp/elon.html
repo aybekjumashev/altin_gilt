@@ -16,10 +16,45 @@
             </ol>
         </nav>
 
+        {% if request.user.is_authenticated and elon.user == request.user and elon.status != elon.StatusChoices.APPROVED %}
+        <div class="alert 
+            {% if elon.status == elon.StatusChoices.PENDING %}alert-warning{% endif %}
+            {% if elon.status == elon.StatusChoices.REJECTED %}alert-danger{% endif %}
+            shadow-sm mb-4" role="alert">
+            <div class="d-flex align-items-center">
+                {% if elon.status == elon.StatusChoices.PENDING %}<i class="bi bi-hourglass-split fs-3 me-3"></i>{% endif %}
+                {% if elon.status == elon.StatusChoices.REJECTED %}<i class="bi bi-x-octagon-fill fs-3 me-3"></i>{% endif %}
+                <div>
+                    <h4 class="alert-heading mb-1">
+                        {% if elon.status == elon.StatusChoices.PENDING %}Bu e'lon hozirda moderatsiyada{% endif %}
+                        {% if elon.status == elon.StatusChoices.REJECTED %}Bu e'lon rad etilgan{% endif %}
+                    </h4>
+                    <p class="mb-1">
+                        {% if elon.status == elon.StatusChoices.PENDING %}
+                            Administratorlar tomonidan ko'rib chiqilmoqda. Tasdiqlangandan so'ng saytda ommaga ko'rinadigan bo'ladi.
+                        {% endif %}
+                        {% if elon.status == elon.StatusChoices.REJECTED %}
+                            E'loningiz ma'lum sabablarga ko'ra rad etildi.
+                            {% if elon.moderation_notes %}
+                                <br><strong>Moderator izohi:</strong> {{ elon.moderation_notes|linebreaksbr }}
+                            {% endif %}
+                        {% endif %}
+                    </p>
+                    {% if elon.status == elon.StatusChoices.REJECTED or elon.status == elon.StatusChoices.PENDING %}
+                        <a href="{% url 'AltinGiltApp:elon_edit' elon.id %}" class="btn btn-sm {% if elon.status == elon.StatusChoices.PENDING %}btn-outline-secondary{% else %}btn-warning{% endif %} mt-2">
+                            <i class="bi bi-pencil-square me-1"></i> E'lonni tahrirlash
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+
         <div class="row g-4">
             <!-- Chap Ustun: Rasmlar -->
             <div class="col-lg-7">
-                <div class="card shadow-sm border-0 rounded overflow-hidden"> <!-- Chegara va yumaloqlik -->
+                <div class="card shadow-sm border-0 rounded overflow-hidden">
                     {% if elon.rasmlar.all %}
                     <div id="elonCarousel" class="carousel slide" data-bs-ride="carousel">
                         <div class="carousel-indicators">
@@ -30,11 +65,11 @@
                         <div class="carousel-inner">
                             {% for rasm in elon.rasmlar.all %}
                             <div class="carousel-item {% if forloop.first %}active{% endif %}">
-                                <img src="{{ rasm.image.url }}" class="d-block w-100" alt="{{ elon.nomi }} rasmi {{ forloop.counter }}" style="aspect-ratio: 16 / 10; object-fit: cover;"> <!-- aspect-ratio va cover -->
+                                <img src="{{ rasm.image.url }}" class="d-block w-100" alt="{{ elon.nomi }} rasmi {{ forloop.counter }}" style="aspect-ratio: 16 / 10; object-fit: cover;">
                             </div>
                             {% endfor %}
                         </div>
-                        {% if elon.rasmlar.count > 1 %} <!-- Faqat bittadan ko'p rasm bo'lsa kontrolni ko'rsatamiz -->
+                        {% if elon.rasmlar.count > 1 %}
                         <button class="carousel-control-prev" type="button" data-bs-target="#elonCarousel" data-bs-slide="prev">
                             <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                             <span class="visually-hidden">Oldingi</span>
@@ -49,7 +84,6 @@
                         <img src="{% static 'images/placeholder.png' %}" alt="Rasm yo'q" class="card-img-top" style="aspect-ratio: 16 / 10; object-fit: cover;">
                     {% endif %}
                 </div>
-                <!-- Thumbnails (keyinchalik qo'shish mumkin) -->
             </div>
 
             <!-- O'ng Ustun: Ma'lumotlar -->
@@ -65,53 +99,39 @@
 
                         <div class="my-3">
                              <h2 class="text-primary fw-bolder mb-0">{{ elon.narxi }} so'm</h2>
-                             <!-- Agar kv.m narxi bo'lsa qo'shish mumkin -->
-                             <!-- <p class="text-muted small mb-0">15 000 000 so'm / m²</p> -->
                         </div>
 
                         <hr>
-
-                        <!-- Asosiy Xususiyatlar (Agar modelda bo'lsa) -->
-                        <!-- <h5 class="mt-2 mb-3">Asosiy xususiyatlar:</h5>
-                        <div class="row g-2 text-muted mb-3">
-                            <div class="col-6"><i class="bi bi-rulers me-1"></i> Maydoni: 120 m²</div>
-                            <div class="col-6"><i class="bi bi-door-open-fill me-1"></i> Xonalar: 4</div>
-                            <div class="col-6"><i class="bi bi-building me-1"></i> Qavat: 2 / 5</div>
-                            <div class="col-6"><i class="bi bi-check-circle-fill me-1 text-success"></i> Holati: Yangi</div>
-                        </div>
-                        <hr> -->
 
                         <h5 class="mt-2 mb-1">E'lon beruvchi:</h5>
                         <div class="d-flex align-items-center mb-3">
                              <i class="bi bi-person-circle fs-4 text-secondary me-2"></i>
                              <div>
                                  <strong class="d-block">{{ elon.user.get_full_name|default:elon.user.username }}</strong>
-                                 <small class="text-muted">Qo'shilgan sana: {{ elon.created_at }}</small>
+                                 <small class="text-muted">Qo'shilgan sana: {{ elon.created_at|date:"d M Y, H:i" }}</small>
                              </div>
                         </div>
 
-                        <!-- Kontakt Tugmasi (Placeholder) -->
                         <div class="d-grid gap-2 mt-auto pt-3">
-                            <button class="btn btn-success btn-lg" type="button">
+                            <button class="btn btn-success btn-lg" type="button" data-bs-toggle="modal" data-bs-target="#contactModal">
                                 <i class="bi bi-telephone-fill me-2"></i> Sotuvchi bilan bog'lanish
                             </button>
-                            <!-- Tahrirlash/O'chirish (agar e'lon egasi bo'lsa) -->
-                            {% if user == elon.user %}
+                            {% if request.user.is_authenticated and user == elon.user %}
                                 <div class="btn-group mt-2">
-                                    <a href="#" class="btn btn-outline-warning">
+                                    <a href="{% url 'AltinGiltApp:elon_edit' elon.id %}" class="btn btn-outline-warning">
                                         <i class="bi bi-pencil-square"></i> Tahrirlash
                                     </a>
-                                    <a href="#" class="btn btn-outline-danger">
+                                    <a href="#" onclick="confirmDelete('{{ elon.id }}', '{{ elon.nomi|escapejs }}')" class="btn btn-outline-danger">
                                         <i class="bi bi-trash3"></i> O'chirish
                                     </a>
                                 </div>
                              {% endif %}
                         </div>
 
-                    </div> <!-- End card-body -->
-                </div> <!-- End card -->
-            </div> <!-- End col-lg-5 -->
-        </div> <!-- End row -->
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Batafsil Tavsif Bo'limi -->
         <div class="row mt-4">
@@ -119,7 +139,7 @@
                 <div class="card shadow-sm border-0">
                      <div class="card-body">
                         <h4 class="mb-3">Batafsil ma'lumot</h4>
-                        <div class="text-secondary lh-lg description-text"> <!-- Tavsif uchun alohida klass -->
+                        <div class="text-secondary lh-lg description-text">
                             {{ elon.batafsil|linebreaksbr }}
                         </div>
                      </div>
@@ -127,26 +147,61 @@
             </div>
         </div>
 
-        <!-- Ortga qaytish tugmasi (pastda) -->
          <div class="text-center mt-4">
              <a href="{% url 'AltinGiltApp:elonlar_list' %}" class="btn btn-outline-secondary">
                  <i class="bi bi-arrow-left me-1"></i> Barcha e'lonlarga qaytish
              </a>
          </div>
 
-    </div> <!-- End container -->
+    </div>
 </section>
+
+<!-- Sotuvchi bilan bog'lanish uchun Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="contactModalLabel">Sotuvchi bilan bog'lanish</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Afsuski, sotuvchining kontakt ma'lumotlari hozircha mavjud emas yoki bu funksiya hali ishga tushirilmagan.</p>
+        <p>Iltimos, keyinroq urinib ko'ring.</p>
+        <!-- Kelajakda:
+        <p><strong>Telefon:</strong> {{ elon.user.profile.phone_number|default:"Ko'rsatilmagan" }}</p>
+        <p><strong>Email:</strong> {{ elon.user.email|default:"Ko'rsatilmagan" }}</p>
+        -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Yopish</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_head %}
 {{ block.super }}
 <style>
     .carousel-indicators [data-bs-target] {
-        background-color: rgba(0, 0, 0, 0.3); /* Indikator rangini o'zgartirish */
+        background-color: rgba(0, 0, 0, 0.3);
         border: 1px solid rgba(255, 255, 255, 0.5);
     }
     .carousel-indicators .active {
-        background-color: var(--bs-primary); /* Aktiv indikator rangi */
+        background-color: var(--bs-primary);
     }
 </style>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script>
+// O'chirishni tasdiqlash funksiyasi (shaxsiy_kabinet.html dagi bilan bir xil)
+function confirmDelete(elonId, elonNomi) {
+    if (confirm(`Haqiqatan ham "${elonNomi}" nomli e'lonni o'chirmoqchimisiz? Bu amalni bekor qilib bo'lmaydi.`)) {
+        alert("E'lonni o'chirish funksiyasi hali to'liq sozlanmagan.");
+    }
+}
+</script>
 {% endblock %}

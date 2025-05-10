@@ -2,7 +2,7 @@
 {% extends "altingiltapp/base.html" %}
 {% load static %}
 
-{% block title %}Yangi E'lon Qo'shish{% endblock %}
+{% block title %}{{ form_title|default:"E'lon bilan ishlash" }}{% endblock %}
 
 {% block content %}
 <div class="container mt-4 mb-5">
@@ -10,26 +10,48 @@
         <div class="col-lg-10">
 
             <div class="text-center mb-4">
-                <h2 class="fw-bold">Yangi E'lon Joylashtirish</h2>
-                <p class="text-muted">Iltimos, barcha kerakli maydonlarni to'ldiring.</p>
+                <h2 class="fw-bold">{{ form_title|default:"E'lon ma'lumotlari" }}</h2>
+                {% if elon %} {# Tahrirlash rejimida #}
+                    <p class="text-muted">E'lon ma'lumotlarini o'zgartiring. O'zgartirishlar qayta moderatsiyadan o'tadi.</p>
+                    {% if elon.status == elon.StatusChoices.REJECTED and elon.moderation_notes %}
+                        <div class="alert alert-warning mt-3 shadow-sm">
+                            <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i>Oldingi rad etish sababi:</h5>
+                            <p class="mb-0">{{ elon.moderation_notes|linebreaksbr }}</p>
+                        </div>
+                    {% endif %}
+                {% else %} {# Yangi e'lon qo'shish rejimida #}
+                    <p class="text-muted">Iltimos, barcha kerakli maydonlarni to'ldiring. E'loningiz moderatsiyadan o'tkaziladi.</p>
+                {% endif %}
             </div>
 
-            <form method="POST" action="{% url 'AltinGiltApp:elon_create' %}" enctype="multipart/form-data" id="elon-form">
-                {% csrf_token %}
+            {% if messages %}
+                {% for message in messages %}
+                    {% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR or message.level == DEFAULT_MESSAGE_LEVELS.WARNING %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
 
+            {% if elon_form.non_field_errors or formset.non_form_errors %}
+            <div class="alert alert-danger" role="alert">
+                <strong>Xatolik!</strong>
+                {% for error in elon_form.non_field_errors %} <p class="mb-0">{{ error }}</p> {% endfor %}
+                {% for error in formset.non_form_errors %} <p class="mb-0">{{ error }}</p> {% endfor %}
+                 {% if formset.total_error_count and not formset.non_form_errors %}
+                    <p class="mb-0">Iltimos, rasm yuklashdagi xatoliklarni to'g'rilang.
+                    {% if formset.min_num > 0 and not elon %} Minimal {{ formset.min_num }} ta rasm kerak.{% endif %}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+
+            <form method="POST" action="" enctype="multipart/form-data" id="elon-form">
+                {% csrf_token %}
                 <div class="card shadow-sm border-0">
                     <div class="card-body p-lg-5">
-
-                        {% if elon_form.non_field_errors or formset.non_form_errors %}
-                        <div class="alert alert-danger" role="alert">
-                            <strong>Xatolik!</strong>
-                            {% for error in elon_form.non_field_errors %} {{ error }} {% endfor %}
-                            {% for error in formset.non_form_errors %} {{ error }} {% endfor %}
-                             {% if formset.total_error_count and not formset.non_form_errors %} {# Agar faqat rasm soni xatosi bo'lsa #}
-                                Iltimos, rasm yuklashdagi xatoliklarni to'g'rilang. Minimal {{ formset.min_num }} ta rasm kerak.
-                            {% endif %}
-                        </div>
-                        {% endif %}
 
                         <div class="row g-4">
                             <!-- Chap qism: Asosiy ma'lumotlar -->
@@ -45,7 +67,7 @@
                                         </label>
                                         {{ field }}
                                         {% if field.help_text %}
-                                            <div class="form-text text-muted small">{{ field.help_text }}</div>
+                                            <div class="form-text text-muted small">{{ field.help_text|safe }}</div>
                                         {% endif %}
                                         {% if field.errors %}
                                             <div class="invalid-feedback d-block fw-bold">
@@ -61,72 +83,75 @@
                             <!-- O'ng qism: Rasmlar -->
                             <div class="col-md-5">
                                 <h4 class="mb-3 border-bottom pb-2">
-                                    <i class="bi bi-images me-2 text-primary"></i>Rasmlarni yuklash <span class="text-danger">*</span>
+                                    <i class="bi bi-images me-2 text-primary"></i>Rasmlarni yuklash
+                                    {% if formset.min_num > 0 and not elon %}<span class="text-danger">*</span>{% endif %}
                                 </h4>
                                 <p class="text-muted small mb-3">
                                     <i class="bi bi-check-circle me-1 text-success"></i> Birinchi rasm asosiy bo'ladi. <br>
-                                    <i class="bi bi-exclamation-triangle me-1 text-warning"></i> Kamida <strong>{{ formset.min_num }} ta</strong>, ko'pi bilan <strong>{{ formset.max_num }} ta</strong> rasm yuklang.
+                                    {% if formset.min_num > 0 and not elon %}
+                                    <i class="bi bi-exclamation-triangle me-1 text-warning"></i> Kamida <strong>{{ formset.min_num }} ta</strong> rasm yuklang.
+                                    {% endif %}
+                                    {% if formset.max_num %}
+                                    Ko'pi bilan <strong>{{ formset.max_num }} ta</strong>.
+                                    {% endif %}
                                 </p>
 
                                 {{ formset.management_form }} <!-- MUHIM! -->
-
-                                {% if formset.total_error_count %}
-                                    <div class="alert alert-danger small p-2" role="alert">
-                                        <i class="bi bi-exclamation-circle-fill me-1"></i> Iltimos, rasm yuklashdagi xatoliklarni to'g'rilang. Minimal {{ formset.min_num }} ta rasm kerak.
-                                    </div>
-                                {% endif %}
-
-                                <!-- Rasmlar uchun dinamik container -->
                                 <div id="image-forms-container">
                                     {% for form in formset %}
-                                        <div class="image-form-wrapper mb-3 p-3 {% if not forloop.first and not form.image.errors %}d-none{% endif %}" id="image-form-{{ forloop.counter0 }}-wrapper"> {# Xato bo'lsa ham ko'rsatamiz #}
+                                        <div class="image-form-wrapper mb-3 p-3 {% if not form.is_bound and not form.initial and forloop.counter0 >= (formset.initial_form_count + 1) %}d-none{% endif %}" id="{{ formset.prefix }}-{{ forloop.counter0 }}-wrapper" data-form-index="{{ forloop.counter0 }}">
                                             <div class="d-flex justify-content-between align-items-center mb-2 position-relative">
                                                 <label for="{{ form.image.id_for_label }}" class="form-label fw-bold small mb-0">
                                                     Rasm #{{ forloop.counter }}
                                                 </label>
-                                                <!-- O'chirish tugmasi (Preview yoniga) -->
-                                                <button type="button" class="btn btn-sm btn-outline-danger remove-image-btn" style="display: none;">
-                                                    <i class="bi bi-x"></i>
+                                                {% if form.instance.pk and formset.can_delete %}
+                                                <div class="form-check form-check-inline small ms-auto me-2">
+                                                    {{ form.DELETE }}
+                                                    <label class="form-check-label" for="{{ form.DELETE.id_for_label }}">
+                                                        O'chirish
+                                                    </label>
+                                                </div>
+                                                {% endif %}
+                                                <button type="button" class="btn btn-sm btn-outline-danger clear-image-btn" style="display: none;">
+                                                    <i class="bi bi-x"></i> Tozalash
                                                 </button>
                                             </div>
 
-                                            <!-- Preview uchun joy (inputdan oldin) -->
                                             <div class="image-preview-container">
-                                                <img src="#" class="img-fluid image-preview" alt="Preview"> {# img-fluid class qo'shildi #}
+                                                 {% if form.instance.pk and form.image.value %}
+                                                    <img src="{{ form.image.value.url }}" class="img-fluid image-preview" alt="Mavjud rasm {{ forloop.counter }}" style="display:block;">
+                                                {% elif form.is_bound and form.image.value %} {# Agar forma yuborilgan va fayl tanlangan bo'lsa (xatolik bilan qaytganda) #}
+                                                    <!-- Bu holatda preview JS orqali tiklanadi, serverdan URL kelmaydi -->
+                                                    <img src="#" class="img-fluid image-preview" alt="Preview {{ forloop.counter }}">
+                                                {% else %}
+                                                    <img src="#" class="img-fluid image-preview" alt="Preview {{ forloop.counter }}">
+                                                {% endif %}
                                             </div>
-
-                                            <!-- Asl input -->
                                             {{ form.image }}
-
                                             {% if form.image.errors %}
                                                 <div class="invalid-feedback d-block small fw-bold mt-1">
                                                     <i class="bi bi-exclamation-circle-fill me-1"></i>
                                                     {% for error in form.image.errors %} {{ error }} {% endfor %}
                                                 </div>
                                             {% endif %}
-                                                <!-- O'chirish checkboxi (tahrirlash uchun) -->
-                                            {% if form.instance.pk and form.fields.DELETE %}
-                                                <div class="form-check form-check-inline mt-1 small">
-                                                    {{ form.DELETE }}
-                                                    <label class="form-check-label" for="{{ form.DELETE.id_for_label }}">
-                                                        O'chirish
-                                                    </label>
-                                                </div>
-                                            {% endif %}
                                         </div>
                                     {% endfor %}
                                 </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="add-image-form-btn">
+                                    <i class="bi bi-plus-circle"></i> Yana rasm qo'shish
+                                </button>
+                                <p class="text-muted small mt-1" id="image-count-status"></p>
                             </div>
                         </div>
 
                         <hr class="my-4">
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="{{ request.META.HTTP_REFERER|default:request.build_absolute_uri }}" class="btn btn-secondary btn-lg order-md-1">
+                            <a href="{% if elon %}{% url 'AltinGiltApp:shaxsiy_kabinet' %}{% else %}{% url 'AltinGiltApp:bosh_sahifa' %}{% endif %}" class="btn btn-secondary btn-lg order-md-1">
                                 <i class="bi bi-x-lg me-1"></i> Bekor qilish
                             </a>
                              <button type="submit" class="btn btn-primary btn-lg order-md-2">
-                                <i class="bi bi-check-lg me-1"></i> E'lonni Saqlash
+                                <i class="bi bi-check-lg me-1"></i> {{ submit_button_text|default:"Saqlash" }}
                             </button>
                         </div>
 
@@ -141,166 +166,262 @@
 {% block extra_scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const container = document.getElementById('image-forms-container');
-    const maxForms = parseInt("{{ formset.max_num }}"); // Maksimal formalar soni
-    const totalFormsInput = document.querySelector('#id_{{ formset.prefix }}-TOTAL_FORMS'); // Management form inputi
+    const imageFormsContainer = document.getElementById('image-forms-container');
+    const addFormBtn = document.getElementById('add-image-form-btn');
+    const formsetPrefix = "{{ formset.prefix }}";
+    const totalFormsInput = document.getElementById(`id_${formsetPrefix}-TOTAL_FORMS`);
+    const maxForms = parseInt(document.getElementById(`id_${formsetPrefix}-MAX_NUM_FORMS`).value);
+    const minForms = parseInt(document.getElementById(`id_${formsetPrefix}-MIN_NUM_FORMS`).value); // Agar 0 bo'lsa, bitta ham shart emas
+    const initialFormsCount = parseInt(document.getElementById(`id_${formsetPrefix}-INITIAL_FORMS`).value);
+    const imageCountStatus = document.getElementById('image-count-status');
+    const isEditMode = {{ elon|yesno:"true,false" }};
 
-    // Formsetdagi barcha wrapperlarni topamiz
-    const formWrappers = container.querySelectorAll('.image-form-wrapper');
+    function updateFormVisibilityAndCount() {
+        let visibleFormsCount = 0;
+        const allForms = imageFormsContainer.querySelectorAll('.image-form-wrapper');
+        
+        allForms.forEach(wrapper => {
+            if (!wrapper.classList.contains('d-none')) {
+                visibleFormsCount++;
+            }
+        });
 
-    // Xatolik bo'lsa yoki avvalgi qiymatlar bo'lsa, kerakli formalarni ko'rsatish
-    let lastVisibleIndex = 0;
-    formWrappers.forEach((wrapper, index) => {
-        const input = wrapper.querySelector('input[type="file"]');
-        const hasError = wrapper.querySelector('.invalid-feedback');
-        // Agar inputda fayl bo'lsa (tahrirlashda) yoki xato bo'lsa, ko'rsatamiz
-        // Backend fayl nomini yubormaydi, shuning uchun xatolikka tayanamiz
-        // Yoki server tomonida preview url ni yuborish kerak bo'ladi tahrirlash uchun
-        if (hasError) {
-            wrapper.classList.remove('d-none');
+        if (visibleFormsCount >= maxForms) {
+            addFormBtn.style.display = 'none';
+        } else {
+            addFormBtn.style.display = 'inline-block';
+        }
+        imageCountStatus.textContent = `Yuklangan/Tanlangan rasmlar: ${countActualImages()} / ${maxForms}`;
+    }
+
+    function countActualImages() {
+        let count = 0;
+        imageFormsContainer.querySelectorAll('.image-form-wrapper').forEach(wrapper => {
+            if (wrapper.classList.contains('d-none')) return;
+
             const preview = wrapper.querySelector('.image-preview');
-            const removeBtn = wrapper.querySelector('.remove-image-btn');
-             // Agar xato bo'lsa preview/remove ko'rsatilmasligi mumkin, buni tekshirish kerak
-             // preview.style.display = 'block'; // Faqat test uchun
-            // removeBtn.style.display = 'inline-block'; // Faqat test uchun
-            lastVisibleIndex = index;
-        } else if (index === 0) { // Birinchi forma har doim ko'rinadi
-             wrapper.classList.remove('d-none');
-             lastVisibleIndex = index;
-        }
-    });
+            const deleteCheckbox = wrapper.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            const fileInput = wrapper.querySelector('input[type="file"]');
 
-     // Birinchi bo'sh formani ko'rsatish (agar xatoliklar tufayli ko'p ochilmagan bo'lsa)
-    if (lastVisibleIndex + 1 < formWrappers.length) {
-        const nextWrapper = container.querySelector(`#image-form-${lastVisibleIndex + 1}-wrapper`);
-        if (nextWrapper && nextWrapper.querySelector('input[type="file"]').files.length === 0 && !nextWrapper.querySelector('.invalid-feedback')) {
-             nextWrapper.classList.remove('d-none');
-        }
+            if (deleteCheckbox && deleteCheckbox.checked) {
+                return; // O'chirishga belgilanganlar hisoblanmaydi
+            }
+            if (preview && preview.src && !preview.src.endsWith('#') && preview.style.display === 'block') {
+                count++; // Ko'rinib turgan preview bor
+            } else if (fileInput && fileInput.files && fileInput.files.length > 0) {
+                count++; // Fayl tanlangan, lekin preview hali yuklanmagan bo'lishi mumkin
+            }
+        });
+        return count;
     }
 
 
-    container.addEventListener('change', function(event) {
-        if (event.target.matches('input[type="file"]')) {
-            const wrapper = event.target.closest('.image-form-wrapper');
-            const preview = wrapper.querySelector('.image-preview');
-            const removeBtn = wrapper.querySelector('.remove-image-btn');
-            const file = event.target.files[0];
+    imageFormsContainer.querySelectorAll('.image-form-wrapper').forEach(wrapper => {
+        const input = wrapper.querySelector('input[type="file"]');
+        const preview = wrapper.querySelector('.image-preview');
+        const clearBtn = wrapper.querySelector('.clear-image-btn');
+        const deleteCheckbox = wrapper.querySelector('input[type="checkbox"][name$="-DELETE"]');
 
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
-                    removeBtn.style.display = 'inline-block'; // O'chirish tugmasini ko'rsatish
-                }
-                reader.readAsDataURL(file);
+        // Initial state for clear button
+        if (preview && preview.src && !preview.src.endsWith('#') && preview.style.display === 'block') {
+            if (!(deleteCheckbox && deleteCheckbox.checked)) { // Show if not marked for delete
+                 clearBtn.style.display = 'inline-block';
+            }
+        } else if (input && input.files && input.files.length > 0) {
+             clearBtn.style.display = 'inline-block'; // If file selected on server error reload
+        }
 
-                // Keyingi yashirin formani topish va ko'rsatish
-                const currentId = wrapper.id; // "image-form-0-wrapper"
-                const currentIndex = parseInt(currentId.match(/(\d+)/)[0]);
-                const nextIndex = currentIndex + 1;
 
-                if (nextIndex < maxForms) {
-                    const nextWrapper = container.querySelector(`#image-form-${nextIndex}-wrapper`);
-                    if (nextWrapper) {
-                        nextWrapper.classList.remove('d-none'); // Keyingisini ko'rsatish
+        if (input) {
+            input.addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        preview.src = e.target.result;
+                        preview.style.display = 'block';
+                        preview.style.opacity = '1'; // Reset opacity
                     }
-                    // Agar management formdagi TOTAL_FORMS keyingi indeksdan kichik bo'lsa, uni yangilash kerak bo'lishi mumkin
-                    // Lekin odatda Django barcha formalarni kutadi
-                    // if (nextIndex >= parseInt(totalFormsInput.value)) {
-                    //     totalFormsInput.value = nextIndex + 1;
-                    // }
+                    reader.readAsDataURL(file);
+                    clearBtn.style.display = 'inline-block';
+                    if (deleteCheckbox) { // Agar yangi fayl tanlansa, DELETE ni olib tashlash
+                        deleteCheckbox.checked = false;
+                        if (input) input.disabled = false; // Re-enable input
+                        preview.style.opacity = '1';
+                    }
+                } else { // Fayl tanlanmagan (masalan, 'Cancel' bosilgan)
+                    // Agar bu mavjud rasm bo'lmasa (URL da /media/ yo'q bo'lsa)
+                    if (!(preview.src && preview.src.includes('/media/'))) {
+                        preview.src = '#';
+                        preview.style.display = 'none';
+                        clearBtn.style.display = 'none';
+                    }
                 }
-            } else {
-                // Fayl tanlanmagan bo'lsa (masalan, 'Cancel' bosilsa)
+                updateFormVisibilityAndCount();
+            });
+        }
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                input.value = null; // Faylni tozalash
+                // Eski brauzerlar uchun qo'shimcha
+                try { input.files = new DataTransfer().files; } catch (e) {}
+
                 preview.src = '#';
                 preview.style.display = 'none';
-                removeBtn.style.display = 'none';
+                clearBtn.style.display = 'none';
+
+                // Agar bu mavjud rasm bo'lsa (ya'ni DELETE checkboxi bor bo'lsa) va u belgilangan bo'lsa,
+                // uni olib tashlamaymiz, chunki foydalanuvchi "O'chirish"ni bekor qilmoqchi bo'lishi mumkin.
+                // Bu tugma faqat yangi tanlangan faylni yoki previewni tozalash uchun.
+                // Mavjud rasmni "o'chirish"ni bekor qilish uchun DELETE checkboxini olib tashlash kerak.
+                if (deleteCheckbox && deleteCheckbox.checked) {
+                    // Agar foydalanuvchi "Tozalash"ni bossa va "O'chirish" belgilangan bo'lsa,
+                    // "O'chirish"ni ham olib tashlaymizmi? Bu UX savoli.
+                    // Hozircha faqat inputni tozalaymiz.
+                }
+                updateFormVisibilityAndCount();
+            });
+        }
+
+        if (deleteCheckbox) {
+            deleteCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    preview.style.opacity = '0.5';
+                    if (input) input.disabled = true; // Fayl inputini o'chirish
+                    clearBtn.style.display = 'none'; // Tozalash tugmasini yashirish
+                } else {
+                    preview.style.opacity = '1';
+                    if (input) input.disabled = false; // Fayl inputini qayta yoqish
+                    // Agar previewda rasm bo'lsa (bekor qilingandan keyin), tozalash tugmasini ko'rsatish
+                    if (preview.src && !preview.src.endsWith('#') && preview.style.display === 'block') {
+                        clearBtn.style.display = 'inline-block';
+                    }
+                }
+                updateFormVisibilityAndCount();
+            });
+            // Sahifa yuklanganda DELETE checkboxining holatini tekshirish
+            if (deleteCheckbox.checked) {
+                preview.style.opacity = '0.5';
+                if (input) input.disabled = true;
+                clearBtn.style.display = 'none';
             }
         }
     });
 
-    container.addEventListener('click', function(event) {
-        if (event.target.closest('.remove-image-btn')) {
-            const button = event.target.closest('.remove-image-btn');
-            const wrapper = button.closest('.image-form-wrapper');
-            const input = wrapper.querySelector('input[type="file"]');
-            const preview = wrapper.querySelector('.image-preview');
+    if (addFormBtn) {
+        addFormBtn.addEventListener('click', function() {
+            const hiddenForms = imageFormsContainer.querySelectorAll('.image-form-wrapper.d-none');
+            if (hiddenForms.length > 0) {
+                hiddenForms[0].classList.remove('d-none');
+                updateFormVisibilityAndCount();
+            }
+        });
+    }
 
-            // Inputni tozalash
-            input.value = null; // Faylni olib tashlash
-            // Eski brauzerlar uchun qo'shimcha:
-            try {
-                 input.files = new DataTransfer().files;
-            } catch (e) {}
-
-
-            // Preview va tugmani yashirish
-            preview.src = '#';
-            preview.style.display = 'none';
-            button.style.display = 'none';
-
-            // Boshqa formalar logikasini tekshirish (agar formani yashirish kerak bo'lsa)
-            // Hozircha faqat tozalaymiz, formani yashirmaymiz, bu formset logikasi uchun xavfsizroq
-            // Agar formani yashirish kerak bo'lsa, TOTAL_FORMS ni ham kamaytirish kerak bo'ladi, bu murakkabroq
+    // Boshlang'ich ko'rinishni sozlash
+    function initializeFormDisplay() {
+        const allWrappers = imageFormsContainer.querySelectorAll('.image-form-wrapper');
+        let visibleCount = 0;
+        let formsToInitiallyShow = isEditMode ? initialFormsCount : (minForms > 0 ? minForms : 1);
+        if (isEditMode && initialFormsCount === 0 && minForms > 0) { // Tahrir, lekin avval rasmlar bo'lmagan, endi minimal talab bor
+            formsToInitiallyShow = minForms;
+        } else if (isEditMode && initialFormsCount === 0 && minForms === 0) { // Tahrir, avval rasm yo'q, minimal ham yo'q
+             formsToInitiallyShow = 1; // Kamida bitta bo'sh forma ko'rsatamiz
         }
-    });
+
+
+        allWrappers.forEach((wrapper, index) => {
+            const isInitial = index < initialFormsCount;
+            const preview = wrapper.querySelector('.image-preview');
+            const hasInitialImage = isInitial && preview && preview.src && !preview.src.endsWith('#') && preview.style.display === 'block';
+            const hasBoundFileError = wrapper.querySelector('input[type="file"]').value || wrapper.querySelector('.invalid-feedback.d-block'); // Xatolik bilan qaytganda
+
+            if (isInitial || hasBoundFileError) { // Mavjud formalar yoki xatolik bilan qaytganlar har doim ko'rinadi
+                wrapper.classList.remove('d-none');
+                visibleCount++;
+            } else if (visibleCount < formsToInitiallyShow && index >= initialFormsCount) { // Bo'sh formalarni kerakli miqdorda ko'rsatish
+                wrapper.classList.remove('d-none');
+                visibleCount++;
+            }
+            else if (index >= initialFormsCount && !hasBoundFileError) { // Qolgan bo'sh formalarni yashirish
+                 wrapper.classList.add('d-none');
+            }
+        });
+        // Agar minimal talab bajarilmagan bo'lsa va yetarlicha bo'sh forma ko'rsatilmagan bo'lsa, yana ochish
+        let currentActualImages = countActualImages();
+        let neededEmptyForms = (minForms > currentActualImages && !isEditMode) ? (minForms - currentActualImages) : 0;
+        if (isEditMode && initialFormsCount === 0 && minForms > 0) neededEmptyForms = minForms; // tahrir, rasm yo'q, min talab bor
+
+
+        if (neededEmptyForms > 0) {
+             const hiddenEmptyForms = Array.from(imageFormsContainer.querySelectorAll('.image-form-wrapper.d-none'))
+                                       .filter(w => {
+                                           const inp = w.querySelector('input[type="file"]');
+                                           const prev = w.querySelector('.image-preview');
+                                           return (!inp || !inp.value) && (!prev || !prev.src || prev.src.endsWith('#'));
+                                       });
+            for(let i=0; i< Math.min(neededEmptyForms, hiddenEmptyForms.length); i++){
+                hiddenEmptyForms[i].classList.remove('d-none');
+            }
+        }
+
+
+        updateFormVisibilityAndCount();
+    }
+
+    initializeFormDisplay();
 });
 </script>
 {% endblock %}
+
 {% block extra_head %}
 {{ block.super }}
 <style>
-    /* Preview konteynerini yanada kattaroq qilamiz */
     .image-preview-container {
         background-color: #f8f9fa;
-        border: 1px dashed #ced4da; /* Chegara qo'shildi */
-        border-radius: 0.375rem; /* Bootstrap form-control bilan bir xil */
-        min-height: 250px; /* Minimal balandlik sezilarli darajada oshirildi */
+        border: 1px dashed #ced4da;
+        border-radius: 0.375rem;
+        min-height: 180px; /* Kamaytirildi */
         position: relative;
         display: flex;
         align-items: center;
         justify-content: center;
-        overflow: hidden; /* Katta rasm chiqib ketmasligi uchun */
-        margin-bottom: 0.5rem; /* Preview va input orasida joy */
+        overflow: hidden;
+        margin-bottom: 0.5rem;
     }
-    /* Preview rasmining maksimal balandligini oshiramiz */
     .image-preview {
-        max-height: 230px; /* Balandlik sezilarli darajada oshirildi */
-        max-width: 95%;    /* Eni konteynerdan biroz kichik */
+        max-height: 160px; /* Kamaytirildi */
+        max-width: 95%;
         height: auto;
         object-fit: contain;
-        display: none;
+        display: none; /* Boshida yashirin */
     }
-    .remove-image-btn {
-        position: absolute; /* Konteynerga nisbatan joylashish */
-        top: 8px;           /* Yuqoridan joy */
-        right: 8px;         /* O'ngdan joy */
-        z-index: 10;        /* Boshqa elementlar ustida turishi uchun */
+    .clear-image-btn { /* remove-image-btn nomi o'zgartirildi */
+        /* position: absolute;
+        top: 8px;
+        right: 8px; */
+        /* z-index: 10; */
         font-size: 0.8em;
-        padding: 0.1rem 0.4rem;
-        background-color: rgba(255, 255, 255, 0.7); /* Orqa fon biroz shaffof */
-        border-radius: 50%; /* Dumaloq tugma */
+        /* padding: 0.1rem 0.4rem; */
+        /* background-color: rgba(255, 255, 255, 0.7); */
+        /* border-radius: 50%; */
     }
     #image-forms-container input[type="file"] {
         font-size: 0.9rem;
-        margin-top: 0.5rem; /* Previewdan keyin joy */
+        margin-top: 0.5rem;
     }
-    /* Yashirin form wrapper */
-    .image-form-wrapper.d-none {
-        display: none; /* Ensure it's hidden */
-    }
-     /* Har bir rasm bloki */
     .image-form-wrapper {
-        background-color: #f8f9fa; /* Och kulrang fon */
+        background-color: #f8f9fa;
         border: 1px solid #dee2e6;
         border-radius: 0.375rem;
     }
-    /* Labelni biroz ajratish */
      .image-form-wrapper label.form-label {
         font-size: 0.85rem;
         color: #6c757d;
      }
-
+    .image-form-wrapper.d-none {
+        display: none !important;
+    }
 </style>
 {% endblock %}
