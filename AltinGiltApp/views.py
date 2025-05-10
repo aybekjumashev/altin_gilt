@@ -6,10 +6,17 @@ from django.contrib.auth.decorators import login_required # Faqat kirgan foydala
 from django.contrib.auth import login, authenticate, logout # Kirish/chiqish funksiyalari
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm # Standart kirish va ro'yxatdan o'tish formalari
 from django.contrib import messages # Xabarlarni ko'rsatish uchun (Flask'dagi flash)
-from .forms import ElonForm, RasmForm # Keyinroq yaratadigan formalarimiz
+from .forms import CustomUserCreationForm, CustomAuthenticationForm, ElonForm, RasmForm # Yangi formalarni import qilamiz
 from django.forms import modelformset_factory, inlineformset_factory  # Bir nechta rasm yuklash uchun
 from django.db import transaction # Bir nechta DB operatsiyalarini atomik qilish uchun
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.contrib.auth import get_user_model
+
+
+CustomUser = get_user_model() # CustomUser modelini olish
+
+
+
 
 def bosh_sahifa(request):
     elonlar = Elon.objects.filter(status=Elon.StatusChoices.APPROVED).order_by('-created_at')[:3]
@@ -208,56 +215,71 @@ def elon_tahrirlash(request, elon_id):
 
 
 def register_view(request):
+    if request.user.is_authenticated:
+        return redirect('AltinGiltApp:bosh_sahifa') # Agar kirgan bo'lsa, bosh sahifaga
+
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user) # Ro'yxatdan o'tgandan so'ng avtomatik kirish
+            login(request, user)
             messages.success(request, "Ro'yxatdan o'tish muvaffaqiyatli!")
-            return redirect('AltinGiltApp:bosh_sahifa') # Yoki boshqa sahifaga
+            return redirect('AltinGiltApp:bosh_sahifa')
         else:
-            # Formada xatoliklar bo'lsa, xabarlarni ko'rsatish
+            # Xatoliklarni chiroyliroq chiqarish
             for field, errors in form.errors.items():
                 for error in errors:
-                    messages.error(request, f"{field}: {error}")
-            # Yoki shunchaki umumiy xabar
-            # messages.error(request, "Formani to'ldirishda xatoliklar mavjud.")
-    else: # GET request
-        form = UserCreationForm()
-    context = {'form': form}
-    return render(request, 'registration/register.html', context) # Shablon joylashuvini o'zgartirdik
+                    if field == '__all__': # Umumiy xatolar uchun
+                         messages.error(request, error)
+                    else:
+                        messages.error(request, f"{form.fields[field].label}: {error}")
+    else:
+        form = CustomUserCreationForm()
+    context = {'form': form, 'title': "Ro'yxatdan o'tish"}
+    return render(request, 'registration/register.html', context)
+
 
 def login_view(request):
+    if request.user.is_authenticated:
+        return redirect('AltinGiltApp:bosh_sahifa')
+
     if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
+        form = CustomAuthenticationForm(request, data=request.POST) # `request` ni birinchi argument sifatida berish muhim
         if form.is_valid():
-            username = form.cleaned_data.get('username')
+            phone_number = form.cleaned_data.get('username') # Formada 'username' deb nomlangan (labeli 'Telefon raqami')
             password = form.cleaned_data.get('password')
-            user = authenticate(username=username, password=password)
+            user = authenticate(request, username=phone_number, password=password) # `username` parametri `USERNAME_FIELD` ga mos kelishi kerak
+            
             if user is not None:
                 login(request, user)
-                messages.info(request, f"Xush kelibsiz, {username}!")
-                # Keyingi sahifaga yo'naltirish (agar 'next' parametri bo'lsa)
-                next_page = request.POST.get('next', '/') # Yoki request.GET.get(...)
-                if not next_page or next_page == 'None': # Ba'zan 'None' string kelishi mumkin
-                     next_page = '/' 
+                messages.info(request, f"Xush kelibsiz, {user.first_name}!")
+                next_page = request.POST.get('next') or request.GET.get('next')
+                if not next_page or next_page == 'None' or not next_page.startswith('/'):
+                     next_page = 'AltinGiltApp:bosh_sahifa' 
                 return redirect(next_page)
             else:
-                messages.error(request, "Login yoki parol noto'g'ri.")
+                messages.error(request, "Telefon raqami yoki parol noto'g'ri.")
         else:
-            messages.error(request, "Login yoki parol noto'g'ri.")
-    else: # GET request
-        form = AuthenticationForm()
-        # 'next' parametrini shablonga uzatish
-        next_page = request.GET.get('next', '/')
+             # Xatoliklarni chiroyliroq chiqarish
+            for field, errors in form.errors.items():
+                for error in errors:
+                    if field == '__all__':
+                         messages.error(request, error)
+                    # else: # Maydon nomi bilan xato chiqarish shart emas, forma o'zi ko'rsatadi
+                         # messages.error(request, f"{form.fields[field].label}: {error}") 
+            if not form.errors: # Agar maydon xatosi bo'lmasa, umumiy xato
+                messages.error(request, "Telefon raqami yoki parol noto'g'ri (form xatosi).")
+
+    else:
+        form = CustomAuthenticationForm()
+    
+    next_param = request.GET.get('next', '')
     context = {
-        'form': form,
-        'next': next_page # Shablon form action'iga qo'shish uchun
+        'form': form, 
+        'title': "Kirish",
+        'next': next_param
     }
-    return render(request, 'registration/login.html', context) # Shablon joylashuvi
-
-
-
+    return render(request, 'registration/login.html', context)
 
 
 def logout_view(request):

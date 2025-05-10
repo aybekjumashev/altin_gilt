@@ -145,3 +145,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media') # Fayllarni serverda saqlash uchun 
 LOGIN_URL = 'AltinGiltApp:login' # Bizning login view'imizning URL nomi
 LOGIN_REDIRECT_URL = 'AltinGiltApp:bosh_sahifa' # Kirgandan keyin yo'naltiriladigan standart sahifa
 LOGOUT_REDIRECT_URL = 'AltinGiltApp:bosh_sahifa' # Chiqqandan keyin yo'naltiriladigan standart sahifa
+
+
+AUTH_USER_MODEL = 'AltinGiltApp.CustomUser' 

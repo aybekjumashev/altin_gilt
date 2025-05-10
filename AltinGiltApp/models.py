@@ -1,7 +1,75 @@
 # AltinGiltApp/models.py
 from django.db import models
-from django.contrib.auth.models import User # Django'ning standart User modelini import qilamiz
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin # Django'ning standart User modelini import qilamiz
 from django.utils.translation import gettext_lazy as _
+from django.core.validators import RegexValidator
+
+phone_regex = RegexValidator(
+    regex=r'^\+?1?\d{9,15}$', # Yoki O'zbekiston uchun aniqroq format: r'^\+998\d{9}$'
+    message=_("Telefon raqami formati noto'g'ri. Misol: '+998901234567'")
+)
+
+class CustomUserManager(BaseUserManager):
+    def create_user(self, phone_number, first_name, password=None, **extra_fields):
+        if not phone_number:
+            raise ValueError(_('Telefon raqami kiritilishi shart'))
+        if not first_name:
+            raise ValueError(_('Ism kiritilishi shart'))
+
+        # Telefon raqamini normallashtirish mumkin (masalan, + belgisini olib tashlash yoki qo'shish)
+        # user = self.model(phone_number=self.normalize_email(phone_number), **extra_fields) # normalize_email o'rniga boshqa narsa
+        user = self.model(phone_number=phone_number, first_name=first_name, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, phone_number, first_name, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True) # Superuser aktiv bo'lishi kerak
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError(_('Superuser is_staff=True bo\'lishi kerak.'))
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError(_('Superuser is_superuser=True bo\'lishi kerak.'))
+        
+        return self.create_user(phone_number, first_name, password, **extra_fields)
+
+class CustomUser(AbstractBaseUser, PermissionsMixin):
+    phone_number = models.CharField(
+        _('telefon raqami'), 
+        max_length=17, 
+        unique=True,
+        validators=[phone_regex], # Validatorni qo'shdik
+        help_text=_('Telefon raqamingizni +998XXXXXXXXX formatida kiriting.')
+    )
+    first_name = models.CharField(_('ism'), max_length=150)
+    last_name = models.CharField(_('familiya'), max_length=150, blank=True) # Familiya ixtiyoriy
+    
+    # Django User modelidagi standart maydonlar (kerak bo'lsa)
+    email = models.EmailField(_('elektron pochta'), blank=True, null=True, unique=True) # Emailni ham unique qilish mumkin
+    is_staff = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True) # Yangi userlar avtomatik aktiv bo'lsinmi?
+    date_joined = models.DateTimeField(auto_now_add=True)
+
+    objects = CustomUserManager()
+
+    USERNAME_FIELD = 'phone_number' # Login uchun ishlatiladigan maydon
+    REQUIRED_FIELDS = ['first_name'] # createsuperuser so'raydigan maydonlar (USERNAME_FIELD dan tashqari)
+
+    def __str__(self):
+        return f"{self.first_name} ({self.phone_number})"
+
+    def get_full_name(self):
+        return f"{self.first_name} {self.last_name}".strip()
+
+    def get_short_name(self):
+        return self.first_name
+
+    class Meta:
+        verbose_name = _('foydalanuvchi')
+        verbose_name_plural = _('foydalanuvchilar')
+
 
 class Elon(models.Model):
     nomi = models.CharField(max_length=200)
@@ -22,7 +90,7 @@ class Elon(models.Model):
     batafsil = models.TextField()
     # Foydalanuvchi bilan bog'lash (Django User modeli bilan)
     # on_delete=models.CASCADE: Foydalanuvchi o'chirilganda uning e'lonlari ham o'chiriladi
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='elonlar')
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='elonlar')
     # Yaratilgan va yangilangan vaqtni avtomatik saqlash (ixtiyoriy, lekin foydali)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -60,7 +128,7 @@ class Elon(models.Model):
 # Rasmlarni qayerga yuklashni belgilash funksiyasi (dinamik yo'l yaratish)
 def elon_rasm_path(instance, filename):
     # Fayl 'media/elon_rasmlari/<elon_id>/<filename>' ko'rinishida saqlanadi
-    return f'elon_rasmlari/{instance.elon.id}/{filename}'
+    return f'images/{instance.elon.id}/{filename}'
 
 class Rasm(models.Model):
     # Fayl nomini saqlash shart emas, Django buni o'zi boshqaradi.
