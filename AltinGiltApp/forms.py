@@ -21,16 +21,19 @@ class ElonForm(forms.ModelForm):
             'narxi': "Narxi (so'mda)",
             'batafsil': "Batafsil ma'lumot",
         }
-
-
-# RasmForm o'zgarishsiz qoladi
+        
 class RasmForm(forms.ModelForm):
     class Meta:
         model = Rasm
-        fields = ['image']
+        fields = ['image'] # Faqat 'image' maydonini qoldiramiz. Django 'id' ni o'zi qo'shishi kerak.
         widgets = {
-            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'image': forms.FileInput(attrs={'class': 'form-control'}),
         }
-        labels = {
-            'image': 'Rasm fayli'
-        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Agar bu formaga bog'langan instance (mavjud Rasm obyekti) bo'lsa
+        # va unda rasm allaqachon mavjud bo'lsa, 'image' maydonini majburiy qilmaslik.
+        # Bu logikani inlineformset_factory o'zi bajarishi kerak, lekin har ehtimolga qarshi.
+        if self.instance and self.instance.pk and self.instance.image:
+            self.fields['image'].required = False

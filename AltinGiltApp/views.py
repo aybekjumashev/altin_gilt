@@ -72,7 +72,7 @@ def elon_sahifasi(request, elon_id):
 
 # E'lon qo'shish
 @login_required
-def elon_qoshish(request): # elon_tahrirlash uchun ham shu viewni moslashtiramiz keyinroq
+def elon_qoshish(request): 
     RasmInlineFormSet = inlineformset_factory(
         Elon, Rasm, form=RasmForm,
         extra=5, max_num=10, min_num=3,
@@ -112,57 +112,99 @@ def elon_qoshish(request): # elon_tahrirlash uchun ham shu viewni moslashtiramiz
     }
     return render(request, 'altingiltapp/elon_qoshish.html', context)
 
-
-
-# Keling, tahrirlash viewini ham qo'shamiz
 @login_required
 def elon_tahrirlash(request, elon_id):
-    elon = get_object_or_404(Elon, pk=elon_id, user=request.user) # Faqat o'zining e'lonini tahrirlay olsin
+    elon = get_object_or_404(Elon, pk=elon_id, user=request.user)
 
     RasmInlineFormSet = inlineformset_factory(
         Elon, Rasm, form=RasmForm,
-        extra=3, max_num=10, min_num=0, # Tahrirda minimal rasm 0 bo'lishi mumkin (agar hammasini o'chirmoqchi bo'lsa)
-        validate_min=False, # Minimalni tekshirmaymiz, chunki mavjudlari bor bo'lishi mumkin
-        can_delete=True # Rasmlarni o'chirish imkoniyati
+        fields=['image'], # Faqat 'image' maydonini ishlatamiz RasmFormda
+        extra=3,
+        min_num=0, # Tahrirda minimal shart emas
+        validate_min=False,
+        can_delete=True
     )
 
     if request.method == 'POST':
-        elon_form = ElonForm(request.POST, instance=elon)
-        formset = RasmInlineFormSet(request.POST, request.FILES, instance=elon)
+        elon_form = ElonForm(request.POST, request.FILES, instance=elon) # ElonForm'ga ham FILES kerak (agar unda FileField bo'lsa)
+        formset = RasmInlineFormSet(request.POST, request.FILES, instance=elon, prefix='rasmlar') # prefix qo'shib ko'ramiz
+
+        print(f"--- POST DATA ---")
+        print(request.POST)
+        print(f"--- FILES DATA ---")
+        print(request.FILES)
+        print(f"Elon form valid: {elon_form.is_valid()}")
+        if not elon_form.is_valid():
+            print(f"Elon form errors: {elon_form.errors.as_json()}")
+        
+        print(f"Formset valid: {formset.is_valid()}")
+        if not formset.is_valid():
+            print(f"Formset errors: {formset.errors}") # To'liq error arrayini ko'rish
+            print(f"Formset non_form_errors: {formset.non_form_errors()}")
+            for i, form_in_fs in enumerate(formset.forms):
+                 print(f"Formset form #{i} initial: {form_in_fs.initial}")
+                 print(f"Formset form #{i} instance: {form_in_fs.instance}, instance.pk: {form_in_fs.instance.pk if form_in_fs.instance else None}")
+                 print(f"Formset form #{i} changed_data: {form_in_fs.changed_data}")
+                 print(f"Formset form #{i} errors: {form_in_fs.errors.as_json()}")
+
 
         if elon_form.is_valid() and formset.is_valid():
             try:
                 with transaction.atomic():
                     edited_elon = elon_form.save(commit=False)
-                    # Agar e'lon avval rad etilgan bo'lsa yoki shunchaki tahrirlansa, qayta moderatsiyaga
-                    edited_elon.status = Elon.StatusChoices.PENDING
-                    edited_elon.moderation_notes = None # Eski izohlarni tozalash
-                    edited_elon.save() # ElonForm'dagi o'zgarishlarni saqlash
+                    edited_elon.status = Elon.StatusChoices.PENDING # Model nomini to'g'ri yozing
+                    edited_elon.moderation_notes = None
+                    edited_elon.save()
+                    elon_form.save_m2m() # Agar ElonFormda m2m bo'lsa
 
-                    formset.save() # Rasmlardagi o'zgarishlarni saqlash
+                    # Formsetni saqlashdan oldin yana bir tekshiruv
+                    for form_in_fs in formset:
+                        print(f"Saving form for instance: {form_in_fs.instance}, pk: {form_in_fs.instance.pk if form_in_fs.instance else 'None'}")
+                        if form_in_fs.cleaned_data.get('DELETE') and form_in_fs.instance.pk:
+                            print(f"Deleting instance {form_in_fs.instance.pk}")
+                        elif form_in_fs.has_changed() or not form_in_fs.instance.pk : # Yoki yangi, yoki o'zgargan
+                             if form_in_fs.cleaned_data.get('image') or not form_in_fs.instance.pk: # Agar rasm kelgan bo'lsa yoki yangi bo'lsa
+                                print(f"Saving instance {form_in_fs.instance.pk if form_in_fs.instance.pk else 'NEW'} with image {form_in_fs.cleaned_data.get('image')}")
+                        # else:
+                            # print(f"Skipping save for instance {form_in_fs.instance.pk} - no changes or no new image")
+
+                    formset.save()
 
                 messages.success(request, "E'lon muvaffaqiyatli tahrirlandi va qayta moderatsiyaga yuborildi.")
                 return redirect('AltinGiltApp:shaxsiy_kabinet')
             except Exception as e:
                 messages.error(request, f"E'lonni tahrirlashda xatolik yuz berdi: {e}")
         else:
-            messages.error(request, "Iltimos, formadagi xatoliklarni to'g'rilang.")
+            # Xatoliklarni yig'ish qismi avvalgidek qoladi
+            error_list = []
+            if elon_form.errors:
+                error_list.append(f"E'lon formasi xatolari: {elon_form.errors.as_ul()}")
+            if any(formset.errors): # Check if there are any errors in the formset
+                for i, errors_dict in enumerate(formset.errors):
+                    if errors_dict:
+                        ul_errors = "<ul>"
+                        for field, errors in errors_dict.items():
+                            ul_errors += f"<li>{field}: {', '.join(errors)}</li>"
+                        ul_errors += "</ul>"
+                        error_list.append(f"Rasm #{i+1} xatolari: {ul_errors}")
+            if formset.non_form_errors():
+                 error_list.append(f"Umumiy rasm xatolari: {formset.non_form_errors().as_ul()}")
+            
+            messages.error(request, "Iltimos, formadagi xatoliklarni to'g'rilang:<br>" + "<br>".join(error_list), extra_tags='safe')
+
+
     else: # GET request
         elon_form = ElonForm(instance=elon)
-        formset = RasmInlineFormSet(instance=elon)
+        formset = RasmInlineFormSet(instance=elon, prefix='rasmlar') # GET uchun ham prefix
 
     context = {
         'elon_form': elon_form,
         'formset': formset,
-        'elon': elon, # Shablon uchun
+        'elon': elon,
         'form_title': f"'{elon.nomi}' e'lonini tahrirlash",
         'submit_button_text': "O'zgarishlarni Saqlash"
     }
-    # elon_qoshish.html shablonini qayta ishlatamiz
-    return render(request, 'altingiltapp/elon_qoshish.html', context) 
-
-
-
+    return render(request, 'altingiltapp/elon_qoshish.html', context)
 
 
 def register_view(request):
