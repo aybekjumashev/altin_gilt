@@ -1,0 +1,182 @@
+<!-- templates/altingiltapp/shaxsiy_kabinet.html -->
+{% extends "altingiltapp/base.html" %}
+{% load static %}
+
+{% block title %}Shaxsiy Kabinet - {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+
+    <div class="row g-4">
+        <!-- Chap Ustun: Shaxsiy Ma'lumotlar -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 sticky-lg-top" style="top: 20px;"> <!-- Yopishqoq blok -->
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-person-circle me-2"></i>Shaxsiy Ma'lumotlar</h4>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-person-badge me-2 text-secondary"></i>Login:</span>
+                            <strong class="text-end">{{ user.username }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                           <span><i class="bi bi-envelope-fill me-2 text-secondary"></i>Email:</span>
+                           <span class="text-end text-muted">{{ user.email|default:"(ko'rsatilmagan)" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-person-fill me-2 text-secondary"></i>Ism:</span>
+                            <span class="text-end text-muted">{{ user.first_name|default:"(kiritilmagan)" }}</span>
+                        </li>
+                         <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-person-lines-fill me-2 text-secondary"></i>Familiya:</span>
+                            <span class="text-end text-muted">{{ user.last_name|default:"(kiritilmagan)" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-calendar-check-fill me-2 text-secondary"></i>Ro'yxatdan o'tgan:</span>
+                            <span class="text-end text-muted">{{ user.date_joined|date:"d M Y" }}</span>
+                        </li>
+                    </ul>
+                     <div class="mt-3 d-grid"> <!-- Tugma uchun -->
+                        <a href="#" class="btn btn-outline-primary">
+                             <i class="bi bi-pencil-square me-1"></i> Profilni Tahrirlash
+                        </a>
+                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- O'ng Ustun: E'lonlar -->
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                 <h2 class="fw-bold mb-0">Mening E'lonlarim</h2>
+                 <a href="{% url 'AltinGiltApp:elon_create' %}" class="btn btn-success">
+                    <i class="bi bi-plus-circle-fill me-2"></i> Yangi e'lon qo'shish
+                 </a>
+            </div>
+            <hr class="mb-4">
+
+            {% if elonlar %}
+                <div class="row row-cols-1 row-cols-md-2 g-4"> <!-- 2 ustunli layout -->
+                    {% for elon in elonlar %}
+                    <div class="col">
+                        <div class="card h-100 shadow-sm border-0 listing-card position-relative"> <!-- listing-card klassi va position-relative -->
+                            <div class="position-absolute top-0 end-0 m-2" style="z-index: 10;"> <!-- Tahrirlash/O'chirish tugmalari uchun joy -->
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-light bg-white rounded-circle" type="button" id="dropdownMenuButton{{ elon.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton{{ elon.id }}">
+                                        <li>
+                                            <a class="dropdown-item" href="#"> <!-- EDIT URL -->
+                                                <i class="bi bi-pencil-square me-2 text-warning"></i>Tahrirlash
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="#" onclick="confirmDelete('{{ elon.id }}', '{{ elon.nomi|escapejs }}')"> <!-- DELETE URL (JavaScript bilan) -->
+                                                 <i class="bi bi-trash3 me-2 text-danger"></i>O'chirish
+                                            </a>
+                                            <!-- O'chirish uchun yashirin forma -->
+                                            <form id="delete-form-{{ elon.id }}" action="#" method="POST" style="display: none;"> <!-- DELETE URL ACTION -->
+                                                {% csrf_token %}
+                                                <input type="hidden" name="_method" value="DELETE"> <!-- Agar REST framework ishlatilsa -->
+                                            </form>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="position-relative">
+                                {% if elon.rasmlar.all %}
+                                    {% with first_rasm=elon.rasmlar.first %}
+                                        {% if first_rasm %}
+                                        <img src="{{ first_rasm.image.url }}" alt="{{ elon.nomi }} rasmi" class="card-img-top" style="height: 200px; object-fit: cover;">
+                                        {% else %}
+                                        <img src="{% static 'images/placeholder.png' %}" alt="Rasm yo'q" class="card-img-top" style="height: 200px; object-fit: cover;">
+                                        {% endif %}
+                                    {% endwith %}
+                                {% else %}
+                                     <img src="{% static 'images/placeholder.png' %}" alt="Rasm yo'q" class="card-img-top" style="height: 200px; object-fit: cover;">
+                                {% endif %}
+                                <span class="badge bg-info text-dark position-absolute bottom-0 start-0 ms-2 mb-2 fs-6">{{ elon.get_turi_display }}</span> <!-- Tur uchun badge (pastda) -->
+                            </div>
+                            <div class="card-body d-flex flex-column pb-2"> <!-- Pastki padding kamaytirildi -->
+                                <h5 class="card-title mb-1">{{ elon.nomi }}</h5>
+                                <p class="text-muted small mb-2">
+                                    <i class="bi bi-geo-alt-fill text-secondary"></i> {{ elon.joylashuvi }}
+                                </p>
+                                <!-- <p class="card-text small text-secondary flex-grow-1">{{ elon.batafsil|truncatewords_html:12 }}</p> -->
+                                <div class="d-flex justify-content-between align-items-center mt-auto pt-2">
+                                    <h5 class="text-primary fw-bold mb-0">{{ elon.narxi }} so'm</h5>
+                                    <a href="{% url 'AltinGiltApp:elon_detail' elon.id %}" class="btn btn-outline-primary btn-sm stretched-link">
+                                        Ko'rish <i class="bi bi-arrow-right-short"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-white border-top-0 text-muted small pt-0"> <!-- Yuqori padding olindi -->
+                               <i class="bi bi-clock me-1"></i>Qo'shildi: {{ elon.created_at }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                 <!-- Pagination (agar e'lonlar ko'p bo'lsa) -->
+                {% if page_obj and page_obj.has_other_pages %}
+                <nav aria-label="Sahifalash" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        <!-- Pagination logikasi elonlar.html dan ko'chiriladi -->
+                        ...
+                    </ul>
+                </nav>
+                {% endif %}
+
+            {% else %}
+                <div class="col-12">
+                    <div class="alert alert-info text-center shadow-sm">
+                        <i class="bi bi-info-circle-fill fs-4 d-block mb-2"></i>
+                        <h5 class="alert-heading">Siz hali e'lon joylamagansiz.</h5>
+                        <p>O'z ko'chmas mulkingizni sotish yoki ijaraga berish uchun hoziroq e'lon joylashtiring!</p>
+                        <hr>
+                        <a href="{% url 'AltinGiltApp:elon_create' %}" class="btn btn-success">
+                           <i class="bi bi-plus-circle-fill me-2"></i> Birinchi e'lonni qo'shish
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script>
+// O'chirishni tasdiqlash funksiyasi
+function confirmDelete(elonId, elonNomi) {
+    if (confirm(`Haqiqatan ham "${elonNomi}" nomli e'lonni o'chirmoqchimisiz? Bu amalni bekor qilib bo'lmaydi.`)) {
+        document.getElementById('delete-form-' + elonId).submit();
+    }
+}
+</script>
+{% endblock %}
+
+{% block extra_head %}
+{{ block.super }}
+<style>
+    .listing-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .listing-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+    /* Dropdown tugmasini chiroyliroq qilish */
+    .listing-card .dropdown-toggle::after {
+        display: none; /* Bootstrap strelkasini olib tashlash */
+    }
+     .listing-card .btn-light { /* Dropdown tugmasi foni */
+        --bs-btn-bg: rgba(255, 255, 255, 0.8);
+        --bs-btn-border-color: rgba(0, 0, 0, 0.1);
+        --bs-btn-hover-bg: rgba(255, 255, 255, 1);
+     }
+</style>
+{% endblock %}

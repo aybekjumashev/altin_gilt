@@ -1,0 +1,54 @@
+{% load static %} <!-- Statik fayllarni ishlatish uchun -->
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Uy-joy Bozori{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Statik CSS faylni yuklash -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block extra_head %}{% endblock %} <!-- Qo'shimcha head elementlari uchun -->
+</head>
+<body>
+
+    <!-- Navbar ni qo'shish -->
+    {% include "altingiltapp/navbar.html" %}
+
+    <!-- Xabarlar (Messages) -->
+    <div class="container">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+                    <div class="toast show align-items-center text-bg-{{ message.tags }} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                {{ message }}
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+
+    {% block content %}
+    {% endblock %}
+
+    <!-- Footer (ixtiyoriy) -->
+    <footer class="bg-light text-center text-lg-start">
+      <div class="text-center p-3" style="background-color: rgba(0, 0, 0, 0.05);">
+        © {% now "Y" %} Uy-joy Bozori
+      </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Toast skriptini olib tashladim, chunki Bootstrap 5.3 da u avtomatik ishlaydi yoki
+         uni har bir toast uchun alohida ishga tushirish kerak bo'lishi mumkin.
+         Agar avvalgi kod ishlagan bo'lsa, uni qaytarishingiz mumkin. -->
+    {% block extra_scripts %}{% endblock %} <!-- Qo'shimcha skriptlar uchun -->
+</body>
+</html>

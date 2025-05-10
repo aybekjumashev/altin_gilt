@@ -1,0 +1,306 @@
+<!-- templates/altingiltapp/elon_qoshish.html -->
+{% extends "altingiltapp/base.html" %}
+{% load static %}
+
+{% block title %}Yangi E'lon Qo'shish{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+
+            <div class="text-center mb-4">
+                <h2 class="fw-bold">Yangi E'lon Joylashtirish</h2>
+                <p class="text-muted">Iltimos, barcha kerakli maydonlarni to'ldiring.</p>
+            </div>
+
+            <form method="POST" action="{% url 'AltinGiltApp:elon_create' %}" enctype="multipart/form-data" id="elon-form">
+                {% csrf_token %}
+
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-lg-5">
+
+                        {% if elon_form.non_field_errors or formset.non_form_errors %}
+                        <div class="alert alert-danger" role="alert">
+                            <strong>Xatolik!</strong>
+                            {% for error in elon_form.non_field_errors %} {{ error }} {% endfor %}
+                            {% for error in formset.non_form_errors %} {{ error }} {% endfor %}
+                             {% if formset.total_error_count and not formset.non_form_errors %} {# Agar faqat rasm soni xatosi bo'lsa #}
+                                Iltimos, rasm yuklashdagi xatoliklarni to'g'rilang. Minimal {{ formset.min_num }} ta rasm kerak.
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <div class="row g-4">
+                            <!-- Chap qism: Asosiy ma'lumotlar -->
+                            <div class="col-md-7">
+                                <h4 class="mb-3 border-bottom pb-2">
+                                    <i class="bi bi-info-circle-fill me-2 text-primary"></i>Asosiy ma'lumotlar
+                                </h4>
+                                {% for field in elon_form %}
+                                    <div class="mb-3">
+                                        <label for="{{ field.id_for_label }}" class="form-label fw-bold">
+                                            {{ field.label }}
+                                            {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                                        </label>
+                                        {{ field }}
+                                        {% if field.help_text %}
+                                            <div class="form-text text-muted small">{{ field.help_text }}</div>
+                                        {% endif %}
+                                        {% if field.errors %}
+                                            <div class="invalid-feedback d-block fw-bold">
+                                                <i class="bi bi-exclamation-circle-fill me-1"></i>
+                                                {% for error in field.errors %} {{ error }} {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+
+                            <!-- O'ng qism: Rasmlar -->
+                            <div class="col-md-5">
+                                <h4 class="mb-3 border-bottom pb-2">
+                                    <i class="bi bi-images me-2 text-primary"></i>Rasmlarni yuklash <span class="text-danger">*</span>
+                                </h4>
+                                <p class="text-muted small mb-3">
+                                    <i class="bi bi-check-circle me-1 text-success"></i> Birinchi rasm asosiy bo'ladi. <br>
+                                    <i class="bi bi-exclamation-triangle me-1 text-warning"></i> Kamida <strong>{{ formset.min_num }} ta</strong>, ko'pi bilan <strong>{{ formset.max_num }} ta</strong> rasm yuklang.
+                                </p>
+
+                                {{ formset.management_form }} <!-- MUHIM! -->
+
+                                {% if formset.total_error_count %}
+                                    <div class="alert alert-danger small p-2" role="alert">
+                                        <i class="bi bi-exclamation-circle-fill me-1"></i> Iltimos, rasm yuklashdagi xatoliklarni to'g'rilang. Minimal {{ formset.min_num }} ta rasm kerak.
+                                    </div>
+                                {% endif %}
+
+                                <!-- Rasmlar uchun dinamik container -->
+                                <div id="image-forms-container">
+                                    {% for form in formset %}
+                                        <div class="image-form-wrapper mb-3 p-3 {% if not forloop.first and not form.image.errors %}d-none{% endif %}" id="image-form-{{ forloop.counter0 }}-wrapper"> {# Xato bo'lsa ham ko'rsatamiz #}
+                                            <div class="d-flex justify-content-between align-items-center mb-2 position-relative">
+                                                <label for="{{ form.image.id_for_label }}" class="form-label fw-bold small mb-0">
+                                                    Rasm #{{ forloop.counter }}
+                                                </label>
+                                                <!-- O'chirish tugmasi (Preview yoniga) -->
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-image-btn" style="display: none;">
+                                                    <i class="bi bi-x"></i>
+                                                </button>
+                                            </div>
+
+                                            <!-- Preview uchun joy (inputdan oldin) -->
+                                            <div class="image-preview-container">
+                                                <img src="#" class="img-fluid image-preview" alt="Preview"> {# img-fluid class qo'shildi #}
+                                            </div>
+
+                                            <!-- Asl input -->
+                                            {{ form.image }}
+
+                                            {% if form.image.errors %}
+                                                <div class="invalid-feedback d-block small fw-bold mt-1">
+                                                    <i class="bi bi-exclamation-circle-fill me-1"></i>
+                                                    {% for error in form.image.errors %} {{ error }} {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                                <!-- O'chirish checkboxi (tahrirlash uchun) -->
+                                            {% if form.instance.pk and form.fields.DELETE %}
+                                                <div class="form-check form-check-inline mt-1 small">
+                                                    {{ form.DELETE }}
+                                                    <label class="form-check-label" for="{{ form.DELETE.id_for_label }}">
+                                                        O'chirish
+                                                    </label>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ request.META.HTTP_REFERER|default:request.build_absolute_uri }}" class="btn btn-secondary btn-lg order-md-1">
+                                <i class="bi bi-x-lg me-1"></i> Bekor qilish
+                            </a>
+                             <button type="submit" class="btn btn-primary btn-lg order-md-2">
+                                <i class="bi bi-check-lg me-1"></i> E'lonni Saqlash
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('image-forms-container');
+    const maxForms = parseInt("{{ formset.max_num }}"); // Maksimal formalar soni
+    const totalFormsInput = document.querySelector('#id_{{ formset.prefix }}-TOTAL_FORMS'); // Management form inputi
+
+    // Formsetdagi barcha wrapperlarni topamiz
+    const formWrappers = container.querySelectorAll('.image-form-wrapper');
+
+    // Xatolik bo'lsa yoki avvalgi qiymatlar bo'lsa, kerakli formalarni ko'rsatish
+    let lastVisibleIndex = 0;
+    formWrappers.forEach((wrapper, index) => {
+        const input = wrapper.querySelector('input[type="file"]');
+        const hasError = wrapper.querySelector('.invalid-feedback');
+        // Agar inputda fayl bo'lsa (tahrirlashda) yoki xato bo'lsa, ko'rsatamiz
+        // Backend fayl nomini yubormaydi, shuning uchun xatolikka tayanamiz
+        // Yoki server tomonida preview url ni yuborish kerak bo'ladi tahrirlash uchun
+        if (hasError) {
+            wrapper.classList.remove('d-none');
+            const preview = wrapper.querySelector('.image-preview');
+            const removeBtn = wrapper.querySelector('.remove-image-btn');
+             // Agar xato bo'lsa preview/remove ko'rsatilmasligi mumkin, buni tekshirish kerak
+             // preview.style.display = 'block'; // Faqat test uchun
+            // removeBtn.style.display = 'inline-block'; // Faqat test uchun
+            lastVisibleIndex = index;
+        } else if (index === 0) { // Birinchi forma har doim ko'rinadi
+             wrapper.classList.remove('d-none');
+             lastVisibleIndex = index;
+        }
+    });
+
+     // Birinchi bo'sh formani ko'rsatish (agar xatoliklar tufayli ko'p ochilmagan bo'lsa)
+    if (lastVisibleIndex + 1 < formWrappers.length) {
+        const nextWrapper = container.querySelector(`#image-form-${lastVisibleIndex + 1}-wrapper`);
+        if (nextWrapper && nextWrapper.querySelector('input[type="file"]').files.length === 0 && !nextWrapper.querySelector('.invalid-feedback')) {
+             nextWrapper.classList.remove('d-none');
+        }
+    }
+
+
+    container.addEventListener('change', function(event) {
+        if (event.target.matches('input[type="file"]')) {
+            const wrapper = event.target.closest('.image-form-wrapper');
+            const preview = wrapper.querySelector('.image-preview');
+            const removeBtn = wrapper.querySelector('.remove-image-btn');
+            const file = event.target.files[0];
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    removeBtn.style.display = 'inline-block'; // O'chirish tugmasini ko'rsatish
+                }
+                reader.readAsDataURL(file);
+
+                // Keyingi yashirin formani topish va ko'rsatish
+                const currentId = wrapper.id; // "image-form-0-wrapper"
+                const currentIndex = parseInt(currentId.match(/(\d+)/)[0]);
+                const nextIndex = currentIndex + 1;
+
+                if (nextIndex < maxForms) {
+                    const nextWrapper = container.querySelector(`#image-form-${nextIndex}-wrapper`);
+                    if (nextWrapper) {
+                        nextWrapper.classList.remove('d-none'); // Keyingisini ko'rsatish
+                    }
+                    // Agar management formdagi TOTAL_FORMS keyingi indeksdan kichik bo'lsa, uni yangilash kerak bo'lishi mumkin
+                    // Lekin odatda Django barcha formalarni kutadi
+                    // if (nextIndex >= parseInt(totalFormsInput.value)) {
+                    //     totalFormsInput.value = nextIndex + 1;
+                    // }
+                }
+            } else {
+                // Fayl tanlanmagan bo'lsa (masalan, 'Cancel' bosilsa)
+                preview.src = '#';
+                preview.style.display = 'none';
+                removeBtn.style.display = 'none';
+            }
+        }
+    });
+
+    container.addEventListener('click', function(event) {
+        if (event.target.closest('.remove-image-btn')) {
+            const button = event.target.closest('.remove-image-btn');
+            const wrapper = button.closest('.image-form-wrapper');
+            const input = wrapper.querySelector('input[type="file"]');
+            const preview = wrapper.querySelector('.image-preview');
+
+            // Inputni tozalash
+            input.value = null; // Faylni olib tashlash
+            // Eski brauzerlar uchun qo'shimcha:
+            try {
+                 input.files = new DataTransfer().files;
+            } catch (e) {}
+
+
+            // Preview va tugmani yashirish
+            preview.src = '#';
+            preview.style.display = 'none';
+            button.style.display = 'none';
+
+            // Boshqa formalar logikasini tekshirish (agar formani yashirish kerak bo'lsa)
+            // Hozircha faqat tozalaymiz, formani yashirmaymiz, bu formset logikasi uchun xavfsizroq
+            // Agar formani yashirish kerak bo'lsa, TOTAL_FORMS ni ham kamaytirish kerak bo'ladi, bu murakkabroq
+        }
+    });
+});
+</script>
+{% endblock %}
+{% block extra_head %}
+{{ block.super }}
+<style>
+    /* Preview konteynerini yanada kattaroq qilamiz */
+    .image-preview-container {
+        background-color: #f8f9fa;
+        border: 1px dashed #ced4da; /* Chegara qo'shildi */
+        border-radius: 0.375rem; /* Bootstrap form-control bilan bir xil */
+        min-height: 250px; /* Minimal balandlik sezilarli darajada oshirildi */
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden; /* Katta rasm chiqib ketmasligi uchun */
+        margin-bottom: 0.5rem; /* Preview va input orasida joy */
+    }
+    /* Preview rasmining maksimal balandligini oshiramiz */
+    .image-preview {
+        max-height: 230px; /* Balandlik sezilarli darajada oshirildi */
+        max-width: 95%;    /* Eni konteynerdan biroz kichik */
+        height: auto;
+        object-fit: contain;
+        display: none;
+    }
+    .remove-image-btn {
+        position: absolute; /* Konteynerga nisbatan joylashish */
+        top: 8px;           /* Yuqoridan joy */
+        right: 8px;         /* O'ngdan joy */
+        z-index: 10;        /* Boshqa elementlar ustida turishi uchun */
+        font-size: 0.8em;
+        padding: 0.1rem 0.4rem;
+        background-color: rgba(255, 255, 255, 0.7); /* Orqa fon biroz shaffof */
+        border-radius: 50%; /* Dumaloq tugma */
+    }
+    #image-forms-container input[type="file"] {
+        font-size: 0.9rem;
+        margin-top: 0.5rem; /* Previewdan keyin joy */
+    }
+    /* Yashirin form wrapper */
+    .image-form-wrapper.d-none {
+        display: none; /* Ensure it's hidden */
+    }
+     /* Har bir rasm bloki */
+    .image-form-wrapper {
+        background-color: #f8f9fa; /* Och kulrang fon */
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+    }
+    /* Labelni biroz ajratish */
+     .image-form-wrapper label.form-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+     }
+
+</style>
+{% endblock %}

@@ -1,0 +1,152 @@
+<!-- templates/altingiltapp/elon.html -->
+{% extends "altingiltapp/base.html" %}
+{% load static %}
+
+{% block title %}{{ elon.nomi }} - Uy-joy Bozori{% endblock %}
+
+{% block content %}
+<section class="py-5 bg-light"> <!-- Orqa fon -->
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'AltinGiltApp:bosh_sahifa' %}">Bosh Sahifa</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'AltinGiltApp:elonlar_list' %}">E'lonlar</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ elon.nomi|truncatechars:40 }}</li>
+            </ol>
+        </nav>
+
+        <div class="row g-4">
+            <!-- Chap Ustun: Rasmlar -->
+            <div class="col-lg-7">
+                <div class="card shadow-sm border-0 rounded overflow-hidden"> <!-- Chegara va yumaloqlik -->
+                    {% if elon.rasmlar.all %}
+                    <div id="elonCarousel" class="carousel slide" data-bs-ride="carousel">
+                        <div class="carousel-indicators">
+                            {% for rasm in elon.rasmlar.all %}
+                            <button type="button" data-bs-target="#elonCarousel" data-bs-slide-to="{{ forloop.counter0 }}" class="{% if forloop.first %}active{% endif %}" aria-current="{% if forloop.first %}true{% endif %}" aria-label="Slide {{ forloop.counter }}"></button>
+                            {% endfor %}
+                        </div>
+                        <div class="carousel-inner">
+                            {% for rasm in elon.rasmlar.all %}
+                            <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                                <img src="{{ rasm.image.url }}" class="d-block w-100" alt="{{ elon.nomi }} rasmi {{ forloop.counter }}" style="aspect-ratio: 16 / 10; object-fit: cover;"> <!-- aspect-ratio va cover -->
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% if elon.rasmlar.count > 1 %} <!-- Faqat bittadan ko'p rasm bo'lsa kontrolni ko'rsatamiz -->
+                        <button class="carousel-control-prev" type="button" data-bs-target="#elonCarousel" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Oldingi</span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#elonCarousel" data-bs-slide="next">
+                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Keyingi</span>
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                        <img src="{% static 'images/placeholder.png' %}" alt="Rasm yo'q" class="card-img-top" style="aspect-ratio: 16 / 10; object-fit: cover;">
+                    {% endif %}
+                </div>
+                <!-- Thumbnails (keyinchalik qo'shish mumkin) -->
+            </div>
+
+            <!-- O'ng Ustun: Ma'lumotlar -->
+            <div class="col-lg-5">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body d-flex flex-column">
+                        <h1 class="card-title h2 mb-3">{{ elon.nomi }}</h1>
+
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="badge bg-info text-dark me-2 fs-6">{{ elon.get_turi_display }}</span>
+                            <span class="text-muted"><i class="bi bi-geo-alt-fill me-1"></i>{{ elon.joylashuvi }}</span>
+                        </div>
+
+                        <div class="my-3">
+                             <h2 class="text-primary fw-bolder mb-0">{{ elon.narxi }} so'm</h2>
+                             <!-- Agar kv.m narxi bo'lsa qo'shish mumkin -->
+                             <!-- <p class="text-muted small mb-0">15 000 000 so'm / m²</p> -->
+                        </div>
+
+                        <hr>
+
+                        <!-- Asosiy Xususiyatlar (Agar modelda bo'lsa) -->
+                        <!-- <h5 class="mt-2 mb-3">Asosiy xususiyatlar:</h5>
+                        <div class="row g-2 text-muted mb-3">
+                            <div class="col-6"><i class="bi bi-rulers me-1"></i> Maydoni: 120 m²</div>
+                            <div class="col-6"><i class="bi bi-door-open-fill me-1"></i> Xonalar: 4</div>
+                            <div class="col-6"><i class="bi bi-building me-1"></i> Qavat: 2 / 5</div>
+                            <div class="col-6"><i class="bi bi-check-circle-fill me-1 text-success"></i> Holati: Yangi</div>
+                        </div>
+                        <hr> -->
+
+                        <h5 class="mt-2 mb-1">E'lon beruvchi:</h5>
+                        <div class="d-flex align-items-center mb-3">
+                             <i class="bi bi-person-circle fs-4 text-secondary me-2"></i>
+                             <div>
+                                 <strong class="d-block">{{ elon.user.get_full_name|default:elon.user.username }}</strong>
+                                 <small class="text-muted">Qo'shilgan sana: {{ elon.created_at }}</small>
+                             </div>
+                        </div>
+
+                        <!-- Kontakt Tugmasi (Placeholder) -->
+                        <div class="d-grid gap-2 mt-auto pt-3">
+                            <button class="btn btn-success btn-lg" type="button">
+                                <i class="bi bi-telephone-fill me-2"></i> Sotuvchi bilan bog'lanish
+                            </button>
+                            <!-- Tahrirlash/O'chirish (agar e'lon egasi bo'lsa) -->
+                            {% if user == elon.user %}
+                                <div class="btn-group mt-2">
+                                    <a href="#" class="btn btn-outline-warning">
+                                        <i class="bi bi-pencil-square"></i> Tahrirlash
+                                    </a>
+                                    <a href="#" class="btn btn-outline-danger">
+                                        <i class="bi bi-trash3"></i> O'chirish
+                                    </a>
+                                </div>
+                             {% endif %}
+                        </div>
+
+                    </div> <!-- End card-body -->
+                </div> <!-- End card -->
+            </div> <!-- End col-lg-5 -->
+        </div> <!-- End row -->
+
+        <!-- Batafsil Tavsif Bo'limi -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                     <div class="card-body">
+                        <h4 class="mb-3">Batafsil ma'lumot</h4>
+                        <div class="text-secondary lh-lg description-text"> <!-- Tavsif uchun alohida klass -->
+                            {{ elon.batafsil|linebreaksbr }}
+                        </div>
+                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ortga qaytish tugmasi (pastda) -->
+         <div class="text-center mt-4">
+             <a href="{% url 'AltinGiltApp:elonlar_list' %}" class="btn btn-outline-secondary">
+                 <i class="bi bi-arrow-left me-1"></i> Barcha e'lonlarga qaytish
+             </a>
+         </div>
+
+    </div> <!-- End container -->
+</section>
+{% endblock %}
+
+{% block extra_head %}
+{{ block.super }}
+<style>
+    .carousel-indicators [data-bs-target] {
+        background-color: rgba(0, 0, 0, 0.3); /* Indikator rangini o'zgartirish */
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+    .carousel-indicators .active {
+        background-color: var(--bs-primary); /* Aktiv indikator rangi */
+    }
+</style>
+{% endblock %}

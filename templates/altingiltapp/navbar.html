@@ -1,0 +1,48 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'AltinGiltApp:bosh_sahifa' %}">Uy-joy Bozori</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'bosh_sahifa' %}active{% endif %}" aria-current="page" href="{% url 'AltinGiltApp:bosh_sahifa' %}">Bosh Sahifa</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'elonlar_list' %}active{% endif %}" href="{% url 'AltinGiltApp:elonlar_list' %}">E'lonlar</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Bog'lanish</a> <!-- Hali yaratilmagan -->
+                </li>
+                {% if user.is_authenticated %} <!-- user obyekti context processor orqali keladi -->
+                <li class="nav-item dropdown">
+                    <span class="nav-link dropdown-toggle" style="cursor: pointer;" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-person-fill"></i>
+                        {{ user.username }}
+                    </span>
+                    <ul class="dropdown-menu dropdown-menu-end"> <!-- dropdown-menu-end o'ng tomondan ochilish uchun -->
+                        <li><a class="dropdown-item" href="{% url 'AltinGiltApp:shaxsiy_kabinet' %}">Shaxsiy kabinet</a></li>
+                        <li><a class="dropdown-item" href="{% url 'AltinGiltApp:elon_create' %}">E'lon qo'shish</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <!-- Chiqish uchun formadan foydalanish xavfsizroq (CSRF himoyasi uchun) -->
+                            <form id="logout-form" action="{% url 'AltinGiltApp:logout' %}" method="post" style="display: none;">
+                                {% csrf_token %} <!-- CSRF himoyasi uchun muhim -->
+                            </form>
+                            <a class="dropdown-item" href="#" onclick="document.getElementById('logout-form').submit();">Chiqish</a>
+                        </li>
+                    </ul>
+                </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'login' %}active{% endif %}" href="{% url 'AltinGiltApp:login' %}">Kirish</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'register' %}active{% endif %}" href="{% url 'AltinGiltApp:register' %}">Ro'yxatdan o'tish</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>

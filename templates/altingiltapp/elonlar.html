@@ -1,0 +1,200 @@
+<!-- templates/altingiltapp/elonlar.html -->
+{% extends "altingiltapp/base.html" %}
+{% load static %}
+
+{% block title %}Barcha E'lonlar - Uy-joy Bozori{% endblock %}
+
+{% block content %}
+<section class="py-5 bg-light"> <!-- Orqa fon qo'shildi -->
+    <div class="container">
+        <div class="row mb-4 align-items-center">
+            <div class="col-md-9">
+                 <h1 class="fw-bold">Barcha E'lonlar</h1>
+                 <p class="text-muted lead">Mavjud uy-joylar ro'yxati va qulay filtrlash imkoniyati.</p>
+            </div>
+             <div class="col-md-3 text-md-end">
+                <!-- Kelajakda sortirovka qo'shish mumkin -->
+                <!-- <select class="form-select form-select-sm">
+                    <option selected>Saralash...</option>
+                    <option value="1">Avval yangilari</option>
+                    <option value="2">Avval arzonlari</option>
+                    <option value="3">Avval qimmatlari</option>
+                </select> -->
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Filtrlash Formasi -->
+            <div class="col-lg-3 mb-4 mb-lg-0"> <!-- Kengroq ekranlarda col-lg-3 -->
+                <div class="card shadow-sm sticky-lg-top" style="top: 20px;"> <!-- Yopishqoq filtr bloki -->
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0"><i class="bi bi-funnel-fill me-2"></i>Filtrlash</h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="{% url 'AltinGiltApp:elonlar_list' %}" method="GET">
+                            <div class="mb-3">
+                                <label for="city-filter" class="form-label small fw-bold">Joylashuv</label>
+                                <select class="form-select" id="city-filter" name="shahar">
+                                    <option value="" {% if not selected_shahar %}selected{% endif %}>Barcha shaharlar</option>
+                                    <option value="Toshkent" {% if selected_shahar == 'Toshkent' %}selected{% endif %}>Toshkent</option>
+                                    <option value="Samarqand" {% if selected_shahar == 'Samarqand' %}selected{% endif %}>Samarqand</option>
+                                    <option value="Buxoro" {% if selected_shahar == 'Buxoro' %}selected{% endif %}>Buxoro</option>
+                                    <option value="Andijon" {% if selected_shahar == 'Andijon' %}selected{% endif %}>Andijon</option>
+                                    <option value="Nukus" {% if selected_shahar == 'Nukus' %}selected{% endif %}>Nukus</option>
+                                    <!-- Boshqa shaharlar -->
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                 <label for="type-filter" class="form-label small fw-bold">Mulk turi</label>
+                                <select class="form-select" id="type-filter" name="tur">
+                                    <option value="" {% if not selected_tur %}selected{% endif %}>Barcha turlar</option>
+                                     {% comment %} Agar Elon modelini contextga qo'shsangiz:
+                                        {% for value, name in Elon.ElonTuri.choices %}
+                                            <option value="{{ value }}" {% if selected_tur == value %}selected{% endif %}>{{ name }}</option>
+                                        {% endfor %}
+                                     {% endcomment %}
+                                    <option value="Uy" {% if selected_tur == 'Uy' %}selected{% endif %}>Uy</option>
+                                    <option value="Kvartira" {% if selected_tur == 'Kvartira' %}selected{% endif %}>Kvartira</option>
+                                    <option value="Yer" {% if selected_tur == 'Yer' %}selected{% endif %}>Yer Uchastkasi</option>
+                                    <option value="Dacha" {% if selected_tur == 'Dacha' %}selected{% endif %}>Dacha</option>
+                                    <option value="Ofis" {% if selected_tur == 'Ofis' %}selected{% endif %}>Ofis</option>
+                                </select>
+                            </div>
+                             <!-- Kelajakda narx filtri qo'shish mumkin -->
+                            <!-- <div class="mb-3">
+                                <label for="price-range" class="form-label small fw-bold">Narx oralig'i</label>
+                                <input type="range" class="form-range" id="price-range">
+                            </div> -->
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-search me-1"></i> Qidirish
+                                </button>
+                                {% if selected_shahar or selected_tur %}
+                                <a href="{% url 'AltinGiltApp:elonlar_list' %}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-x-circle me-1"></i> Filtrlarni tozalash
+                                </a>
+                                {% endif %}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- E'lonlar Ro'yxati -->
+            <div class="col-lg-9">
+                <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4"> <!-- 3 ustunli layout (xl uchun) -->
+                    {% if elonlar %}
+                        {% for elon in elonlar %}
+                        <div class="col">
+                            <div class="card h-100 shadow-sm border-0 listing-card">
+                                <div class="position-relative">
+                                    {% if elon.rasmlar.all %}
+                                        {% with first_rasm=elon.rasmlar.first %}
+                                            {% if first_rasm %}
+                                            <img src="{{ first_rasm.image.url }}" alt="{{ elon.nomi }} rasmi" class="card-img-top" style="height: 220px; object-fit: cover;">
+                                            {% else %}
+                                            <img src="{% static 'images/placeholder.png' %}" alt="Rasm yo'q" class="card-img-top" style="height: 220px; object-fit: cover;">
+                                            {% endif %}
+                                        {% endwith %}
+                                    {% else %}
+                                         <img src="{% static 'images/placeholder.png' %}" alt="Rasm yo'q" class="card-img-top" style="height: 220px; object-fit: cover;">
+                                    {% endif %}
+                                     <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6">{{ elon.get_turi_display }}</span>
+                                </div>
+                                <div class="card-body d-flex flex-column">
+                                     <h5 class="card-title mb-1">{{ elon.nomi }}</h5>
+                                     <p class="text-muted small mb-2">
+                                        <i class="bi bi-geo-alt-fill text-secondary"></i> {{ elon.joylashuvi }}
+                                    </p>
+                                    <p class="card-text small text-secondary flex-grow-1">{{ elon.batafsil|truncatewords_html:18 }}</p>
+                                    <div class="d-flex justify-content-between align-items-center mt-auto pt-2">
+                                        <h5 class="text-primary fw-bold mb-0">{{ elon.narxi }} so'm</h5>
+                                        <a href="{% url 'AltinGiltApp:elon_detail' elon.id %}" class="btn btn-outline-primary btn-sm stretched-link">
+                                            Batafsil <i class="bi bi-arrow-right-short"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-white border-top-0 text-muted small d-flex justify-content-between">
+                                   <span><i class="bi bi-person-circle me-1"></i>{{ elon.user.username }}</span>
+                                   <span><i class="bi bi-clock me-1"></i>{{ elon.created_at }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="col-12">
+                            <div class="alert alert-warning text-center" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i> Sizning qidiruv natijangizga mos e'lonlar topilmadi. Filtrlarni o'zgartirib ko'ring.
+                                {% if selected_shahar or selected_tur %}
+                                 <a href="{% url 'AltinGiltApp:elonlar_list' %}" class="alert-link ms-2">Filtrlarni tozalash</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Pagination Placeholder -->
+                {% if is_paginated %} <!-- Kelajakda view'da is_paginated o'zgaruvchisi bo'lishi mumkin -->
+                <nav aria-label="Sahifalash" class="mt-5">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Oldingi">
+                                    <span aria-hidden="true">«</span>
+                                </a>
+                            </li>
+                        {% else %}
+                             <li class="page-item disabled">
+                                <span class="page-link">«</span>
+                            </li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active" aria-current="page"><span class="page-link">{{ num }}</span></li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item"><a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a></li>
+                            {% elif num == page_obj.paginator.page_range.0 or num == page_obj.paginator.page_range|last %}
+                                 <!-- Ko'p nuqta kerak bo'lsa -->
+                                {% if forloop.first and page_obj.number > 3 %} <li class="page-item disabled"><span class="page-link">...</span></li> {% endif %}
+                                <li class="page-item"><a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a></li>
+                                {% if forloop.last and page_obj.number < page_obj.paginator.num_pages|add:'-2' %} <li class="page-item disabled"><span class="page-link">...</span></li> {% endif %}
+                            {% endif %}
+                        {% endfor %}
+
+                         {% if page_obj.has_next %}
+                             <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Keyingi">
+                                    <span aria-hidden="true">»</span>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">»</span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% else %}
+                     <!-- Agar pagination hali qo'shilmagan bo'lsa yoki bitta sahifa bo'lsa -->
+                     <!-- <p class="text-center text-muted mt-4">Barcha e'lonlar ko'rsatildi.</p> -->
+                {% endif %}
+                <!-- End Pagination -->
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_head %}
+{{ block.super }} <!-- Asosiy blockdagi stillarni saqlab qolish -->
+<style>
+    .listing-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .listing-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+</style>
+{% endblock %}
