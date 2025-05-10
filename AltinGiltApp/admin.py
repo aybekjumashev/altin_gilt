@@ -3,37 +3,41 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin # Asos UserAdmi
 from .models import CustomUser, Elon, Rasm
 from django.utils.translation import gettext_lazy as _
 
-# CustomUserAdmin
 class CustomUserAdmin(BaseUserAdmin):
     model = CustomUser
     # UserAdmin dagi fieldsetlarni moslashtirish
-    # Asosiy ma'lumotlar
     fieldsets = (
         (None, {'fields': ('phone_number', 'password')}),
         (_('Shaxsiy ma\'lumotlar'), {'fields': ('first_name', 'last_name', 'email')}),
         (_('Ruxsatlar'), {
             'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
         }),
-        (_('Muhim sanalar'), {'fields': ('last_login', 'date_joined')}),
+        # (_('Muhim sanalar'), {'fields': ('last_login', 'date_joined')}), # <<< BU QATORNI KOMMENTGA OLAMIZ YOKI O'CHIRAMIZ
     )
+    # Yoki, agar bu fieldset qolishini xohlasangiz, 'last_login' va 'date_joined' ni readonly_fields ga qo'shing
+
     # Ro'yxatda ko'rinadigan maydonlar
-    list_display = ('phone_number', 'first_name', 'last_name', 'is_staff', 'is_active')
+    list_display = ('phone_number', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined', 'last_login') # Ro'yxatga qo'shish mumkin
     list_filter = ('is_staff', 'is_superuser', 'is_active', 'groups')
-    # Qidiruv maydonlari
     search_fields = ('phone_number', 'first_name', 'last_name', 'email')
-    # Tartiblash
     ordering = ('phone_number',)
-    # Yangi foydalanuvchi qo'shish formasi uchun maydonlar
+
+    # Faqat o'qish uchun mo'ljallangan maydonlar
+    readonly_fields = ('last_login', 'date_joined') # <<<--- BU QATORNI QO'SHING YOKI YANGILANG
+
+    # Yangi foydalanuvchi qo'shish formasi uchun maydonlar (add_fieldsets)
+    # BaseUserAdmin'ning standart add_formiga tayansak, bu qism shart emas,
+    # lekin agar maxsus forma bo'lsa, uni moslashtirish kerak.
+    # Hozircha BaseUserAdmin'dagi add_fieldsets'dan foydalanamiz.
+    # Agar add_fieldsets'ni o'zingiz belgilamoqchi bo'lsangiz:
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('phone_number', 'first_name', 'last_name', 'email', 'password', 'password2', 
-                       'is_staff', 'is_superuser', 'groups', 'user_permissions'), # password2 UserCreationForm dan keladi
+            # 'password2' standart UserCreationForm'dan, bizning formamizda yo'q bo'lishi mumkin
+            'fields': ('phone_number', 'password', 'first_name', 'last_name', 'email', 'is_staff', 'is_superuser', 'is_active'),
         }),
     )
-    # Agar UserCreationForm'ni admin uchun ham moslashtirsangiz, 'password2' ni formdan olish kerak
-    # Hozircha BaseUserAdmin'ning standart add_form'iga tayanamiz.
-    # add_form = CustomUserCreationForm # Agar admin uchun maxsus yaratish formasi bo'lsa
+    # add_form da ham `date_joined` bo'lmasligi kerak.
 
 # Eski admin.site.unregister(User) kerak emas, chunki biz yangi modelni ro'yxatdan o'tkazamiz
 admin.site.register(CustomUser, CustomUserAdmin)

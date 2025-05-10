@@ -122,6 +122,8 @@ class Elon(models.Model):
         # db_table = 'elonlar_jadvali'
         # Tartiblash (masalan, yangilari birinchi)
         ordering = ['-created_at']
+        verbose_name = _('elon')
+        verbose_name_plural = _('elonlar')
 
 
 
@@ -147,5 +149,7 @@ class Rasm(models.Model):
         import os
         return os.path.basename(self.image.name)
 
-    # class Meta:
-    #     db_table = 'rasmlar_jadvali'
+    class Meta:
+        # db_table = 'rasmlar_jadvali'
+        verbose_name = _('rasm')
+        verbose_name_plural = _('rasmlar')

@@ -107,7 +107,7 @@
                         <div class="d-flex align-items-center mb-3">
                              <i class="bi bi-person-circle fs-4 text-secondary me-2"></i>
                              <div>
-                                 <strong class="d-block">{{ elon.user.get_full_name|default:elon.user.username }}</strong>
+                                 <strong class="d-block">{{ elon.user.first_name }} {{ elon.user.last_name }}</strong>
                                  <small class="text-muted">Qo'shilgan sana: {{ elon.created_at|date:"d M Y, H:i" }}</small>
                              </div>
                         </div>
@@ -165,15 +165,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <p>Afsuski, sotuvchining kontakt ma'lumotlari hozircha mavjud emas yoki bu funksiya hali ishga tushirilmagan.</p>
-        <p>Iltimos, keyinroq urinib ko'ring.</p>
-        <!-- Kelajakda:
-        <p><strong>Telefon:</strong> {{ elon.user.profile.phone_number|default:"Ko'rsatilmagan" }}</p>
-        <p><strong>Email:</strong> {{ elon.user.email|default:"Ko'rsatilmagan" }}</p>
-        -->
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Yopish</button>
+        <p><strong>Telefon:</strong> {{ elon.user.phone_number|default:"Ko'rsatilmagan" }}</p>
       </div>
     </div>
   </div>
