@@ -20,16 +20,6 @@ import re
 
 CustomUser = get_user_model() # CustomUser modelini olish
 
-def escape_markdown_v2(text):
-    """Telegram MarkdownV2 uchun maxsus belgilarni ekranlaydi."""
-    if not isinstance(text, str): # Agar matn string bo'lmasa
-        text = str(text) # Uni stringga o'tkazamiz
-    
-    # Regex bilan almashtirish, lekin bu belgilarni ketma-ketligiga e'tibor berish kerak
-    # Odatda, \ ni birinchi ekranlash kerak, keyin boshqalarini.
-    # Ammo Telegram uchun quyidagi ketma-ketlik ishlaydi:
-    escape_chars = r'[_*\[\]()~`>#\+\-=|{}.!]'
-    return re.sub(escape_chars, r'\\\g<0>', text)
 
 
 def send_telegram_message_via_api(bot_token, chat_id, text_message):
@@ -106,7 +96,7 @@ def contact_view(request):
         form = ContactForm(user=request.user if request.user.is_authenticated else None)
 
     contact_info = {
-        'phone': getattr(settings, 'SITE_CONTACT_PHONE', '+998 93 842 37 77'),
+        'phone': getattr(settings, 'SITE_CONTACT_PHONE', '+998123456789'),
         'address': getattr(settings, 'SITE_CONTACT_ADDRESS', _('Manzil ko\'rsatilmagan')),
     }
     context = {
@@ -148,7 +138,7 @@ def elonlar_sahifasi(request):
         elonlar_list = elonlar_list.filter(turi__nomi__iexact=tur_filter_nomi)
         # Yoki agar ID bo'lsa: elonlar_list = elonlar_list.filter(tur_id=tur_id_filter)
 
-    paginator = Paginator(elonlar_list, 9)
+    paginator = Paginator(elonlar_list, 21)
     page_number = request.GET.get('page')
     try:
         elonlar = paginator.page(page_number)

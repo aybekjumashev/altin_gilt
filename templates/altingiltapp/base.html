@@ -1,35 +1,42 @@
-{% load static %} <!-- Statik fayllarni ishlatish uchun -->
+{% load static %}
 <!DOCTYPE html>
-<html lang="uz">
+<html lang="uz" class="h-100"> {# <<<--- html ga h-100 klassi #}
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Uy-joy Bozori{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <!-- Statik CSS faylni yuklash -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    {% block extra_head %}{% endblock %} <!-- Qo'shimcha head elementlari uchun -->
+    {% block extra_head %}{% endblock %}
     <style>
         a {
             text-decoration: none;
         }
+        html {
+            scrollbar-width: none; /* Firefox */
+            overflow-y: scroll;
+        }
+
+        html::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Edge */
+        }
+        /* Qo'shimcha CSS kerak emas, agar hamma narsa Bootstrap bilan qilinsa */
     </style>
 </head>
-<body>
+<body class="d-flex flex-column h-100"> {# <<<--- body ga d-flex, flex-column va h-100 klasslari #}
 
-    <!-- Navbar ni qo'shish -->
-    {% include "altingiltapp/navbar.html" %}
+    {% include "altingiltapp/navbar.html" %} {# Navbar flex-item bo'ladi #}
 
-    <!-- Xabarlar (Messages) -->
-    <div class="container">
+    <!-- Xabarlar (Messages) - buni ham asosiy kontent wrapperiga kiritish mumkin yoki alohida qoldirish -->
+    <div class="container"> {# Bu qism flex-grow:1 ichida bo'lmagani uchun joy egallamaydi #}
         {% if messages %}
             {% for message in messages %}
                 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
                     <div class="toast show align-items-center text-bg-{{ message.tags }} border-0" role="alert" aria-live="assertive" aria-atomic="true">
                         <div class="d-flex">
                             <div class="toast-body">
-                                {{ message }}
+                                {{ message|safe }}
                             </div>
                             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                         </div>
@@ -39,21 +46,22 @@
         {% endif %}
     </div>
 
+    {# Asosiy kontentni wrapperga o'raymiz #}
+    {# Bu wrapper asosiy bo'sh joyni egallashi kerak #}
+    <main class="flex-shrink-0 flex-grow-1"> {# <<<--- Asosiy kontent uchun wrapper va unga klasslar #}
+        {# Yoki shunchaki <div class="flex-grow-1"> #}
+        {% block content %}
+        {% endblock %}
+    </main>
 
-    {% block content %}
-    {% endblock %}
-
-    <!-- Footer (ixtiyoriy) -->
-    <footer class="bg-light text-center text-lg-start">
-      <div class="text-center p-3" style="background-color: rgba(0, 0, 0, 0.05);">
-        © {% now "Y" %} Uy-joy Bozori
+    {# Footer flex-item bo'ladi va mt-auto uni pastga itaradi #}
+    <footer class="bg-light text-center text-lg-start mt-auto py-3"> {# <<<--- mt-auto va padding qo'shildi #}
+      <div class="container"> {# Yoki text-center p-3... ni to'g'ridan-to'g'ri footerga qo'yish #}
+        <p class="mb-0">© {% now "Y" %} Uy-joy Bozori</p>
       </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Toast skriptini olib tashladim, chunki Bootstrap 5.3 da u avtomatik ishlaydi yoki
-         uni har bir toast uchun alohida ishga tushirish kerak bo'lishi mumkin.
-         Agar avvalgi kod ishlagan bo'lsa, uni qaytarishingiz mumkin. -->
-    {% block extra_scripts %}{% endblock %} <!-- Qo'shimcha skriptlar uchun -->
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>

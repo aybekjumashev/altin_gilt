@@ -5,19 +5,18 @@
 {% block title %}Barcha E'lonlar - Uy-joy Bozori{% endblock %}
 
 {% block content %}
-<section class="py-5 bg-light"> <!-- Orqa fon qo'shildi -->
+<section class="py-4"> <!-- Orqa fon qo'shildi -->
     <div class="container">        
-        <nav aria-label="breadcrumb" class="mb-4">
+        <nav aria-label="breadcrumb" class="mb-3">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{% url 'AltinGiltApp:bosh_sahifa' %}"><i class="bi bi-house-door"></i> Bosh Sahifa</a></li>
                 <li class="breadcrumb-item active" aria-current="page">E'lonlar</li>
             </ol>
         </nav>
 
-        <div class="row mb-4 align-items-center">
+        <div class="row mb-3 align-items-center">
             <div class="col-md-9">
                  <h1 class="fw-bold">Barcha E'lonlar</h1>
-                 <p class="text-muted lead">Mavjud uy-joylar ro'yxati va qulay filtrlash imkoniyati.</p>
             </div>
              <div class="col-md-3 text-md-end">
                 <!-- Kelajakda sortirovka qo'shish mumkin -->
@@ -32,57 +31,59 @@
 
         <div class="row">
             <!-- Filtrlash Formasi -->
-            <div class="col-lg-3 mb-4 mb-lg-0"> <!-- Kengroq ekranlarda col-lg-3 -->
-                <div class="card shadow-sm sticky-lg-top" style="top: 20px;"> <!-- Yopishqoq filtr bloki -->
-                    <div class="card-header bg-white py-3">
-                        <h5 class="mb-0"><i class="bi bi-funnel-fill me-2"></i>Filtrlash</h5>
-                    </div>
+<div class="col-12 mb-4"> 
+                <div class="card shadow-sm">
                     <div class="card-body">
                         <form action="{% url 'AltinGiltApp:elonlar_list' %}" method="GET">
-                            <div class="mb-3">
-                                <label for="city-filter" class="form-label small fw-bold">Joylashuv</label>
-                                <select class="form-select" id="city-filter" name="shahar_nomi">
-                                    <option value="" {% if not selected_shahar_nomi %}selected{% endif %}>Barcha shaharlar</option>
-                                    {% for shahar_obj in shaharlar %} {# Contextdan keladi #}
-                                        <option value="{{ shahar_obj.nomi }}" {% if selected_shahar_nomi == shahar_obj.nomi %}selected{% endif %}>
-                                            {{ shahar_obj.nomi }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                 <label for="type-filter" class="form-label small fw-bold">Mulk turi</label>
-                                <select class="form-select" id="type-filter" name="tur_nomi">
-                                    <option value="" {% if not selected_tur_nomi %}selected{% endif %}>Barcha turlar</option>
-                                    {% for tur_obj in turlar %} {# Contextdan keladi #}
-                                        <option value="{{ tur_obj.nomi }}" {% if selected_tur_nomi == tur_obj.nomi %}selected{% endif %}>
-                                            {{ tur_obj.nomi }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                             <!-- Kelajakda narx filtri qo'shish mumkin -->
-                            <!-- <div class="mb-3">
-                                <label for="price-range" class="form-label small fw-bold">Narx oralig'i</label>
-                                <input type="range" class="form-range" id="price-range">
-                            </div> -->
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-search me-1"></i> Qidirish
-                                </button>
-                                {% if selected_shahar_nomi or selected_tur_nomi %}
-                                <a href="{% url 'AltinGiltApp:elonlar_list' %}" class="btn btn-outline-secondary btn-sm">
-                                    <i class="bi bi-x-circle me-1"></i> Filtrlarni tozalash
-                                </a>
-                                {% endif %}
-                            </div>
+                            {# ----- BU YERDA O'ZGARISHLAR ----- #}
+                            <div class="row g-2 align-items-end"> {# g-2 - oraliq (gutter) uchun, align-items-end - elementlarni pastga tekislash #}
+                                
+                                <div class="col-md"> {# Katta ekranlarda avtomatik kengayadi, kichiklarda to'liq #}
+                                    <label for="city-filter" class="form-label small fw-bold">Joylashuv</label>
+                                    <select class="form-select" id="city-filter" name="shahar_nomi">
+                                        <option value="" {% if not selected_shahar_nomi %}selected{% endif %}>Barcha shaharlar</option>
+                                        {% for shahar_obj in shaharlar %}
+                                            <option value="{{ shahar_obj.nomi }}" {% if selected_shahar_nomi == shahar_obj.nomi %}selected{% endif %}>
+                                                {{ shahar_obj.nomi }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-md"> {# Katta ekranlarda avtomatik kengayadi, kichiklarda to'liq #}
+                                    <label for="type-filter" class="form-label small fw-bold">Mulk turi</label>
+                                    <select class="form-select" id="type-filter" name="tur_nomi">
+                                        <option value="" {% if not selected_tur_nomi %}selected{% endif %}>Barcha turlar</option>
+                                        {% for tur_obj in turlar %}
+                                            <option value="{{ tur_obj.nomi }}" {% if selected_tur_nomi == tur_obj.nomi %}selected{% endif %}>
+                                                {{ tur_obj.nomi }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                {# Tugmalar uchun alohida ustun, d-grid mobil uchun, d-md-block katta ekran uchun #}
+                                <div class="col-md-auto mt-3 mt-md-0"> {# Katta ekranlarda o'zining kengligicha, kichiklarda to'liq #}
+                                   <div class="d-grid d-md-flex gap-2">
+                                        <button type="submit" class="btn btn-primary flex-grow-1 flex-md-grow-0"> {# flex-grow-1 mobil uchun to'liq en #}
+                                            <i class="bi bi-search me-1"></i> Qidirish
+                                        </button>
+                                        {% if selected_shahar_nomi or selected_tur_nomi %}
+                                        <a href="{% url 'AltinGiltApp:elonlar_list' %}" class="btn btn-outline-secondary flex-grow-1 flex-md-grow-0">
+                                            <i class="bi bi-x-circle me-1"></i> Filtrlarni tozalash
+                                        </a>
+                                        {% endif %}
+                                   </div>
+                                </div>
+
+                            </div> {# row g-2 yopildi #}
                         </form>
                     </div>
                 </div>
             </div>
 
             <!-- E'lonlar Ro'yxati -->
-            <div class="col-lg-9">
+            <div class="col-12">
                  <!-- 3 ustunli layout (xl uchun) -->
                     {% if elonlar %}
                     <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">

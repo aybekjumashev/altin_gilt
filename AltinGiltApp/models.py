@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from django.core.validators import RegexValidator
 
 phone_regex = RegexValidator(
-    regex=r'^\+?1?\d{9,15}$', # Yoki O'zbekiston uchun aniqroq format: r'^\+998\d{9}$'
+    regex=r'^\+998\d{9}$', # Yoki O'zbekiston uchun aniqroq format: r'^\+998\d{9}$'
     message=_("Telefon raqami formati noto'g'ri. Misol: '+998901234567'")
 )
 
