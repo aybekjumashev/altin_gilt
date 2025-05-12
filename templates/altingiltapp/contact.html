@@ -17,7 +17,7 @@
             <!-- Aloqa Formasi -->
             <div class="col-lg-7">
                 <div class="card shadow-sm border-0">
-                    <div class="card-body p-4">
+                    <div class="card-body p-4 bg-light">
                         <h4 class="card-title mb-4">{% trans "Xabar yuborish" %}</h4>
                         <form method="POST" action="{% url 'AltinGiltApp:contact' %}" novalidate>
                             {% csrf_token %}
@@ -61,7 +61,7 @@
 
             <!-- Aloqa Ma'lumotlari -->
             <div class="col-lg-5">
-                <div class="card shadow-sm border-0 h-100">
+                <div class="card shadow-sm border-0 h-100 bg-light">
                     <div class="card-body p-4">
                         <h4 class="card-title mb-4">{% trans "Bizning ma'lumotlarimiz" %}</h4>
                         <ul class="list-unstyled">

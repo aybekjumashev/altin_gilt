@@ -21,7 +21,6 @@ import re
 CustomUser = get_user_model() # CustomUser modelini olish
 
 
-
 def send_telegram_message_via_api(bot_token, chat_id, text_message):
     """Telegram Bot API orqali to'g'ridan-to'g'ri xabar yuborish funksiyasi."""
     # Telegram API URL manzili sendMessage metodi uchun
@@ -138,7 +137,7 @@ def elonlar_sahifasi(request):
         elonlar_list = elonlar_list.filter(turi__nomi__iexact=tur_filter_nomi)
         # Yoki agar ID bo'lsa: elonlar_list = elonlar_list.filter(tur_id=tur_id_filter)
 
-    paginator = Paginator(elonlar_list, 21)
+    paginator = Paginator(elonlar_list, 30)
     page_number = request.GET.get('page')
     try:
         elonlar = paginator.page(page_number)
@@ -168,8 +167,6 @@ def elon_sahifasi(request, elon_id):
         raise Http404("E'lon topilmadi yoki ko'rishga ruxsat yo'q.")
     context = {'elon': elon}
     return render(request, 'altingiltapp/elon.html', context)
-
-
 
 
 
