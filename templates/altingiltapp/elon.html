@@ -10,7 +10,7 @@
         <!-- Breadcrumb -->
         <nav aria-label="breadcrumb" class="mb-4">
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{% url 'AltinGiltApp:bosh_sahifa' %}">Bosh Sahifa</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'AltinGiltApp:bosh_sahifa' %}"><i class="bi bi-house-door"></i> Bosh Sahifa</a></li>
                 <li class="breadcrumb-item"><a href="{% url 'AltinGiltApp:elonlar_list' %}">E'lonlar</a></li>
                 <li class="breadcrumb-item active" aria-current="page">{{ elon.nomi|truncatechars:40 }}</li>
             </ol>
@@ -151,11 +151,6 @@
             </div>
         </div>
 
-         <div class="text-center mt-4">
-             <a href="{% url 'AltinGiltApp:elonlar_list' %}" class="btn btn-outline-secondary">
-                 <i class="bi bi-arrow-left me-1"></i> Barcha e'lonlarga qaytish
-             </a>
-         </div>
 
     </div>
 </section>
