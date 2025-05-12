@@ -16,8 +16,20 @@ from django.utils.translation import gettext_lazy as _
 from django.conf import settings # settings.py dan email sozlamalarini olish uchun
 from .forms import ContactForm
 import requests
+import re
 
 CustomUser = get_user_model() # CustomUser modelini olish
+
+def escape_markdown_v2(text):
+    """Telegram MarkdownV2 uchun maxsus belgilarni ekranlaydi."""
+    if not isinstance(text, str): # Agar matn string bo'lmasa
+        text = str(text) # Uni stringga o'tkazamiz
+    
+    # Regex bilan almashtirish, lekin bu belgilarni ketma-ketligiga e'tibor berish kerak
+    # Odatda, \ ni birinchi ekranlash kerak, keyin boshqalarini.
+    # Ammo Telegram uchun quyidagi ketma-ketlik ishlaydi:
+    escape_chars = r'[_*\[\]()~`>#\+\-=|{}.!]'
+    return re.sub(escape_chars, r'\\\g<0>', text)
 
 
 def send_telegram_message_via_api(bot_token, chat_id, text_message):
@@ -29,7 +41,7 @@ def send_telegram_message_via_api(bot_token, chat_id, text_message):
     payload = {
         'chat_id': chat_id,
         'text': text_message,
-        'parse_mode': 'Markdown'  # Yoki 'HTML', yoki umuman ko'rsatmasangiz oddiy matn
+        'parse_mode': 'HTML'  # Yoki 'HTML', yoki umuman ko'rsatmasangiz oddiy matn
     }
     
     try:
@@ -63,17 +75,16 @@ def contact_view(request):
         form = ContactForm(request.POST, user=request.user if request.user.is_authenticated else None)
         if form.is_valid():
             name = form.cleaned_data['name']
-            email_or_phone = form.cleaned_data['email_or_phone']
+            phone = form.cleaned_data['phone']
             subject = form.cleaned_data['subject']
             message_body = form.cleaned_data['message']
 
             telegram_message = (
-                f"*Saytdan Yangi Xabar* 📬\n\n"
-                f"*Mavzu:* `{subject}`\n" # Markdown uchun backticklar
-                f"*Ism:* {name}\n"
-                f"*Telefon:* `{email_or_phone}`\n\n"
-                f"*Xabar Matni:*\n{message_body}\n\n"
-                f"#aloqa #foydalanuvchi_{name.replace(' ', '_')} #mavzu_{subject.replace(' ', '_')[:20]}"
+                f"<b>Saytdan Yangi Xabar</b> 📬\n\n"
+                f"<b>Mavzu:</b> {subject}\n" 
+                f"<b>Ism:</b> {name}\n"
+                f"<b>Telefon:</b> {phone}\n\n"
+                f"<b>Xabar Matni:</b>\n{message_body}\n\n"
             )
             
             bot_token = getattr(settings, 'TELEGRAM_BOT_TOKEN', None)

@@ -14,7 +14,7 @@ class ContactForm(forms.Form):
         label=_("Ismingiz"),
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': _("To'liq ismingizni kiriting")})
     )
-    email_or_phone = forms.CharField( # Email yoki telefon bo'lishi mumkin
+    phone = forms.CharField( # Email yoki telefon bo'lishi mumkin
         max_length=100,
         label=_("Telefon raqamingiz"),
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': _("+998 XX YYY ZZZZ")})
@@ -34,7 +34,7 @@ class ContactForm(forms.Form):
         super().__init__(*args, **kwargs)
         if user and user.is_authenticated:
             self.fields['name'].initial = user.get_full_name() or user.first_name
-            self.fields['email_or_phone'].initial = user.email or user.phone_number
+            self.fields['phone'].initial = user.email or user.phone_number
             # Bu maydonlarni readonly qilish ham mumkin, agar foydalanuvchi kirgan bo'lsa
             # self.fields['name'].widget.attrs['readonly'] = True
             # self.fields['email_or_phone'].widget.attrs['readonly'] = True
