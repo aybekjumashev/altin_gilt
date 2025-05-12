@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin # Asos UserAdmin
 from .models import CustomUser, Elon, Rasm, Shahar, Tur
 from django.utils.translation import gettext_lazy as _
+from django.utils.html import format_html 
 
 class CustomUserAdmin(BaseUserAdmin):
     model = CustomUser
@@ -55,21 +56,32 @@ class TurAdmin(admin.ModelAdmin):
     # prepopulated_fields = {'slug': ('nomi',)} # Agar slug maydoni bo'lsa
 
 
+class RasmInline(admin.TabularInline): # Yoki admin.StackedInline
+    model = Rasm
+    extra = 1 # Yangi rasm qo'shish uchun nechta bo'sh joy (tahrirda)
+    readonly_fields = ('image_preview',) # Rasm previewini ko'rsatish uchun
+
+    def image_preview(self, obj):
+        # obj bu yerda Rasm instance
+        if obj.image:
+            return format_html('<a href="{}"><img src="{}" width="150" height="auto" /></a>', obj.image.url, obj.image.url)
+        return _("(Rasm yo'q)")
+    image_preview.short_description = _('Rasm Ko\'rinishi')
 
 
 # ElonAdmin o'zgarishsiz qolishi mumkin, faqat 'user__username' o'rniga 'user__phone_number' ishlatiladi
 @admin.register(Elon)
 class ElonAdmin(admin.ModelAdmin):
-    list_display = ('nomi', 'user', 'status', 'joylashuvi', 'turi', 'narxi', 'created_at', 'updated_at')
+    list_display = ('nomi', 'user', 'status', 'joylashuvi', 'manzil', 'turi', 'narxi', 'created_at')
     list_filter = ('status', 'turi', 'joylashuvi', 'created_at')
-    search_fields = ('nomi', 'batafsil', 'joylashuvi__nomi', 'turi__nomi', 'user__phone_number', 'user__first_name') # O'zgartirildi
+    search_fields = ('nomi', 'manzil', 'batafsil', 'joylashuvi__nomi', 'turi__nomi', 'user__phone_number', 'user__first_name') # O'zgartirildi
     date_hierarchy = 'created_at'
     list_editable = ('status',)
     autocomplete_fields = ['joylashuvi', 'turi', 'user']
 
     fieldsets = (
-        (None, {
-            'fields': ('nomi', 'user', 'joylashuvi', 'turi', 'narxi', 'batafsil')
+        (_("Asosiy ma'lumotlar"), {
+            'fields': ('nomi', 'user', 'joylashuvi', 'manzil', 'turi', 'narxi', 'batafsil')
         }),
         ('Moderatsiya', {
             'fields': ('status', 'moderation_notes'),
@@ -82,7 +94,8 @@ class ElonAdmin(admin.ModelAdmin):
     )
     readonly_fields = ('created_at', 'updated_at') # Userni endi readonly qilmaymiz, chunki CustomUser
                                                     # admin panelida tanlanishi mumkin. Yoki qoldirish mumkin.
-
+    inlines = [RasmInline]
+    
     @admin.action(description="Tanlangan e'lonlarni tasdiqlash")
     def make_approved(self, request, queryset):
         queryset.update(status=Elon.StatusChoices.APPROVED, moderation_notes=None)

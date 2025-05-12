@@ -53,21 +53,26 @@ class ElonForm(forms.ModelForm):
 
     class Meta:
         model = Elon
-        fields = ['nomi', 'joylashuvi', 'turi', 'narxi', 'batafsil']
+        fields = ['nomi', 'joylashuvi', 'manzil', 'turi', 'narxi', 'batafsil']
         widgets = {
             'nomi': forms.TextInput(attrs={'class': 'form-control'}),
             # 'joylashuvi' va 'turi' uchun standart select widget ishlatiladi. Agar kerak bo'lsa, o'zgartirish mumkin.
             'joylashuvi': forms.Select(attrs={'class': 'form-select'}), # Explicitly defining for class
+            'manzil': forms.TextInput(attrs={'class': 'form-control', 'placeholder': _("Masalan, Amir Temur ko'chasi, 15-uy")}), # Yangi widget
             'turi': forms.Select(attrs={'class': 'form-select'}),       # Explicitly defining for class
             'narxi': forms.NumberInput(attrs={'class': 'form-control'}),
             'batafsil': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
         }
         labels = {
-            'nomi': "E'lon nomi",
-            'joylashuvi': "Joylashuvi (shahar)", # O'zgartirildi
-            'turi': "Mulk turi",
-            'narxi': "Narxi (so'mda)",
-            'batafsil': "Batafsil ma'lumot",
+            'nomi': _("E'lon sarlavhasi"), # Verbose_name dan foydalanish
+            'joylashuvi': _("Shahar/Tuman"),
+            'manzil': _("Aniq manzil"), # Yangi label
+            'turi': _("Mulk turi"),
+            'narxi': _("Narxi (so'mda)"),
+            'batafsil': _("Batafsil ma'lumot"),
+        }
+        help_texts = { # Agar modelda help_text bo'lsa, bu shart emas, lekin override qilish mumkin
+            'manzil': Elon._meta.get_field('manzil').help_text,
         }
 
         

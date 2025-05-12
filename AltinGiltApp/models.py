@@ -101,6 +101,8 @@ class Tur(models.Model):
 class Elon(models.Model):
     nomi = models.CharField(max_length=200)
     joylashuvi = models.ForeignKey(Shahar, on_delete=models.SET_NULL, null=True, blank=False, verbose_name=_("Joylashuvi"))
+    manzil = models.CharField(_("Aniq manzil"), max_length=255, blank=True, 
+                              help_text=_("Ko'cha, uy raqami, mo'ljal (ixtiyoriy)")) 
     turi = models.ForeignKey(Tur, on_delete=models.SET_NULL, null=True, blank=False, verbose_name=_("Mulk turi"))
     narxi = models.PositiveIntegerField() # Narx manfiy bo'lmasligi uchun
     batafsil = models.TextField()
