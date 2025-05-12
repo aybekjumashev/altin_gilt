@@ -13,7 +13,7 @@
                     <a class="nav-link {% if request.resolver_match.url_name == 'elonlar_list' %}active{% endif %}" href="{% url 'AltinGiltApp:elonlar_list' %}">E'lonlar</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#">Bog'lanish</a> <!-- Hali yaratilmagan -->
+                    <a class="nav-link" href="{% url 'AltinGiltApp:contact' %}">Bog'lanish</a> <!-- Hali yaratilmagan -->
                 </li>
                 {% if user.is_authenticated %} <!-- user obyekti context processor orqali keladi -->
                 <li class="nav-item dropdown">

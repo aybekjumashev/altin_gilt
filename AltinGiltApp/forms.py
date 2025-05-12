@@ -7,6 +7,40 @@ from django.utils.translation import gettext_lazy as _
 
 CustomUser = get_user_model() # Bizning CustomUser modelimizni oladi
 
+
+class ContactForm(forms.Form):
+    name = forms.CharField(
+        max_length=100,
+        label=_("Ismingiz"),
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': _("To'liq ismingizni kiriting")})
+    )
+    email_or_phone = forms.CharField( # Email yoki telefon bo'lishi mumkin
+        max_length=100,
+        label=_("Telefon raqamingiz"),
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': _("+998 XX YYY ZZZZ")})
+    )
+    subject = forms.CharField(
+        max_length=150,
+        label=_("Mavzu"),
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': _("Xabar mavzusi")})
+    )
+    message = forms.CharField(
+        label=_("Xabar matni"),
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': _("Xabaringizni shu yerga yozing...")})
+    )
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None) # Viewdan user'ni olamiz
+        super().__init__(*args, **kwargs)
+        if user and user.is_authenticated:
+            self.fields['name'].initial = user.get_full_name() or user.first_name
+            self.fields['email_or_phone'].initial = user.email or user.phone_number
+            # Bu maydonlarni readonly qilish ham mumkin, agar foydalanuvchi kirgan bo'lsa
+            # self.fields['name'].widget.attrs['readonly'] = True
+            # self.fields['email_or_phone'].widget.attrs['readonly'] = True
+
+
+
 class CustomUserCreationForm(UserCreationForm):
     # first_name ni majburiy qilish va last_name ni ixtiyoriy qilish
     first_name = forms.CharField(max_length=150, required=True, label=_("Ism"))

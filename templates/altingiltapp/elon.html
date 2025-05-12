@@ -111,24 +111,30 @@
                                  <small class="text-muted">Qo'shilgan sana: {{ elon.created_at|date:"d M Y, H:i" }}</small>
                              </div>
                         </div>
+                        
+                        {# ----- SOTUVCHI RAQAMI SHU YERDA KO'RSATILADI ----- #}
+                        <div class="alert alert-success mt-3" role="alert">
+                            <h5 class="alert-heading"><i class="bi bi-telephone-fill me-2"></i>Sotuvchi bilan bog'lanish:</h5>
+                            <p class="mb-0 fs-5 fw-bold">
+                                <a href="tel:{{ elon.user.phone_number }}">{{ elon.user.phone_number|default:"Raqam ko'rsatilmagan" }}</a>
+                            </p>
+                        </div>
+                        {# ----- /SOTUVCHI RAQAMI ----- #}
 
-                        <div class="d-grid gap-2 mt-auto pt-3">
-                            <button class="btn btn-success btn-lg" type="button" data-bs-toggle="modal" data-bs-target="#contactModal">
-                                <i class="bi bi-telephone-fill me-2"></i> Sotuvchi bilan bog'lanish
-                            </button>
-                            {% if request.user.is_authenticated and user == elon.user %}
-                                <div class="btn-group mt-2">
-                                    <a href="{% url 'AltinGiltApp:elon_edit' elon.id %}" class="btn btn-outline-warning">
+
+                        <div class="mt-auto pt-3"> {# d-grid gap-2 olib tashlandi, chunki faqat bitta guruh tugma qoladi #}
+                            {% if request.user.is_authenticated and request.user == elon.user %} {# user -> request.user #}
+                                <div class="btn-group d-block d-flex"> {# d-block tugmalar guruhini to'liq enli qiladi #}
+                                    <a href="{% url 'AltinGiltApp:elon_edit' elon.id %}" class="btn btn-outline-warning w-50"> {# w-50 yarim en #}
                                         <i class="bi bi-pencil-square"></i> Tahrirlash
                                     </a>
-                                    <a href="#" onclick="confirmDelete('{{ elon.id }}', '{{ elon.nomi|escapejs }}')" class="btn btn-outline-danger">
+                                    <a href="#" onclick="confirmDelete('{{ elon.id }}', '{{ elon.nomi|escapejs }}')" class="btn btn-outline-danger w-50"> {# w-50 yarim en #}
                                         <i class="bi bi-trash3"></i> O'chirish
                                     </a>
-                                    {# Yashirin forma o'chirish uchun #}
-                                    <form id="delete-form-{{ elon.id }}" action="{% url 'AltinGiltApp:elon_delete' elon.id %}" method="POST" style="display: none;">
-                                        {% csrf_token %}
-                                    </form>
                                 </div>
+                                <form id="delete-form-{{ elon.id }}" action="{% url 'AltinGiltApp:elon_delete' elon.id %}" method="POST" style="display: none;">
+                                    {% csrf_token %}
+                                </form>
                              {% endif %}
                         </div>
 
@@ -150,25 +156,11 @@
                 </div>
             </div>
         </div>
-
-
+        
     </div>
 </section>
 
-<!-- Sotuvchi bilan bog'lanish uchun Modal -->
-<div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="contactModalLabel">Sotuvchi bilan bog'lanish</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p><strong>Telefon:</strong> {{ elon.user.phone_number|default:"Ko'rsatilmagan" }}</p>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- Sotuvchi bilan bog'lanish uchun Modal OYNANI OLIB TASHALADIK -->
 
 {% endblock %}
 

@@ -148,3 +148,6 @@ LOGOUT_REDIRECT_URL = 'AltinGiltApp:bosh_sahifa' # Chiqqandan keyin yo'naltirila
 
 
 AUTH_USER_MODEL = 'AltinGiltApp.CustomUser' 
+
+TELEGRAM_BOT_TOKEN = '7756645686:AAF3lIH0zgBFFUVWED3UZlfLYZlHksbhbaI'
+TELEGRAM_CHAT_ID = '-4684516914'

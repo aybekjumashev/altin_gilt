@@ -13,10 +13,97 @@ from django.db import transaction # Bir nechta DB operatsiyalarini atomik qilish
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
-
+from django.conf import settings # settings.py dan email sozlamalarini olish uchun
+from .forms import ContactForm
+import requests
 
 CustomUser = get_user_model() # CustomUser modelini olish
 
+
+def send_telegram_message_via_api(bot_token, chat_id, text_message):
+    """Telegram Bot API orqali to'g'ridan-to'g'ri xabar yuborish funksiyasi."""
+    # Telegram API URL manzili sendMessage metodi uchun
+    api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    
+    # Yuboriladigan ma'lumotlar (payload)
+    payload = {
+        'chat_id': chat_id,
+        'text': text_message,
+        'parse_mode': 'Markdown'  # Yoki 'HTML', yoki umuman ko'rsatmasangiz oddiy matn
+    }
+    
+    try:
+        response = requests.post(api_url, data=payload, timeout=10) # timeout qo'shish yaxshi amaliyot
+        response.raise_for_status() # Agar HTTP xatosi bo'lsa (4xx yoki 5xx), exception ko'taradi
+        
+        response_data = response.json() # Javobni JSON sifatida olish
+        if response_data.get("ok"):
+            print(f"Telegramga xabar muvaffaqiyatli yuborildi: {response_data.get('result', {}).get('message_id')}")
+            return True
+        else:
+            print(f"Telegram API xatosi: {response_data.get('description')}")
+            return False
+            
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP xatosi yuz berdi: {http_err} - Javob: {response.text if 'response' in locals() else 'Noma\'lum'}")
+    except requests.exceptions.ConnectionError as conn_err:
+        print(f"Ulanish xatosi yuz berdi: {conn_err}")
+    except requests.exceptions.Timeout as timeout_err:
+        print(f"Timeout xatosi yuz berdi: {timeout_err}")
+    except requests.exceptions.RequestException as req_err:
+        print(f"So'rov yuborishda umumiy xato: {req_err}")
+    except Exception as e:
+        print(f"Telegramga yuborishda noma'lum xato (API): {e}")
+    return False
+
+
+
+def contact_view(request):
+    if request.method == 'POST':
+        form = ContactForm(request.POST, user=request.user if request.user.is_authenticated else None)
+        if form.is_valid():
+            name = form.cleaned_data['name']
+            email_or_phone = form.cleaned_data['email_or_phone']
+            subject = form.cleaned_data['subject']
+            message_body = form.cleaned_data['message']
+
+            telegram_message = (
+                f"*Saytdan Yangi Xabar* 📬\n\n"
+                f"*Mavzu:* `{subject}`\n" # Markdown uchun backticklar
+                f"*Ism:* {name}\n"
+                f"*Telefon:* `{email_or_phone}`\n\n"
+                f"*Xabar Matni:*\n{message_body}\n\n"
+                f"#aloqa #foydalanuvchi_{name.replace(' ', '_')} #mavzu_{subject.replace(' ', '_')[:20]}"
+            )
+            
+            bot_token = getattr(settings, 'TELEGRAM_BOT_TOKEN', None)
+            chat_id = getattr(settings, 'TELEGRAM_CHAT_ID', None)
+
+            if bot_token and chat_id:
+                success = send_telegram_message_via_api(bot_token, chat_id, telegram_message)
+                if success:
+                    messages.success(request, _("Xabaringiz muvaffaqiyatli yuborildi! Tez orada siz bilan bog'lanamiz."))
+                    return redirect('AltinGiltApp:contact')
+                else:
+                    messages.error(request, _("Xabarni Telegramga yuborishda muammo yuz berdi. Iltimos, keyinroq qayta urinib ko'ring yoki administratorga xabar bering."))
+            else:
+                messages.warning(request, _("Telegram sozlamalari topilmadi. Xabar yuborilmadi."))
+                print("Telegram bot token yoki chat_id sozlanmagan.")
+        else:
+            messages.error(request, _("Iltimos, formadagi xatoliklarni to'g'rilang."))
+    else:
+        form = ContactForm(user=request.user if request.user.is_authenticated else None)
+
+    contact_info = {
+        'phone': getattr(settings, 'SITE_CONTACT_PHONE', '+998 93 842 37 77'),
+        'address': getattr(settings, 'SITE_CONTACT_ADDRESS', _('Manzil ko\'rsatilmagan')),
+    }
+    context = {
+        'form': form,
+        'title': _("Biz bilan bog'lanish"),
+        'contact_info': contact_info
+    }
+    return render(request, 'altingiltapp/contact.html', context)
 
 
 
@@ -163,7 +250,6 @@ def elon_tahrirlash(request, elon_id):
                  print(f"Formset form #{i} changed_data: {form_in_fs.changed_data}")
                  print(f"Formset form #{i} errors: {form_in_fs.errors.as_json()}")
 
-
         if elon_form.is_valid() and formset.is_valid():
             try:
                 with transaction.atomic():
@@ -207,7 +293,6 @@ def elon_tahrirlash(request, elon_id):
                  error_list.append(f"Umumiy rasm xatolari: {formset.non_form_errors().as_ul()}")
             
             messages.error(request, "Iltimos, formadagi xatoliklarni to'g'rilang:<br>" + "<br>".join(error_list), extra_tags='safe')
-
 
     else: # GET request
         elon_form = ElonForm(instance=elon)

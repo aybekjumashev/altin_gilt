@@ -1,0 +1,96 @@
+<!-- templates/altingiltapp/contact.html -->
+{% extends "altingiltapp/base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{{ title|default:_("Bog'lanish") }}{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h1 class="fw-bold">{{ title|default:_("Biz bilan bog'laning") }}</h1>
+            <p class="lead text-muted">Savollaringiz, takliflaringiz yoki hamkorlik uchun murojaat qiling.</p>
+        </div>
+
+        <div class="row g-5">
+            <!-- Aloqa Formasi -->
+            <div class="col-lg-7">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h4 class="card-title mb-4">{% trans "Xabar yuborish" %}</h4>
+                        <form method="POST" action="{% url 'AltinGiltApp:contact' %}" novalidate>
+                            {% csrf_token %}
+                            
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in form.non_field_errors %}
+                                        <p class="mb-0">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            {% for field in form %}
+                                <div class="mb-3">
+                                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}
+                                        {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                                    </label>
+                                    {{ field }} {# forms.py da widgetga class qo'shilgan #}
+                                    {% if field.help_text %}
+                                        <div class="form-text text-muted small">{{ field.help_text|safe }}</div>
+                                    {% endif %}
+                                    {% if field.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in field.errors %}
+                                                <p class="mb-0">{{ error }}</p>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                            
+                            <div class="d-grid mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-send-fill me-2"></i> {% trans "Yuborish" %}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aloqa Ma'lumotlari -->
+            <div class="col-lg-5">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body p-4">
+                        <h4 class="card-title mb-4">{% trans "Bizning ma'lumotlarimiz" %}</h4>
+                        <ul class="list-unstyled">
+                            <li class="mb-3 d-flex align-items-start">
+                                <i class="bi bi-geo-alt-fill fs-4 text-primary me-3"></i>
+                                <div>
+                                    <strong>{% trans "Manzil" %}:</strong><br>
+                                    {{ contact_info.address|linebreaksbr }}
+                                </div>
+                            </li>
+                            <li class="mb-3 d-flex align-items-start">
+                                <i class="bi bi-telephone-inbound-fill fs-4 text-primary me-3"></i>
+                                <div>
+                                    <strong>{% trans "Telefon" %}:</strong><br>
+                                    <a href="tel:{{ contact_info.phone }}">{{ contact_info.phone }}</a>
+                                </div>
+                            </li>
+                            <!-- Ijtimoiy tarmoqlar (ixtiyoriy) -->
+                            <li class="mt-4">
+                                <strong>Ijtimoiy tarmoqlar:</strong><br>
+                                <a href="#" class="btn btn-outline-primary btn-sm mt-1 me-1"><i class="bi bi-telegram"></i> Telegram</a>
+                                <a href="#" class="btn btn-outline-danger btn-sm mt-1 me-1"><i class="bi bi-instagram"></i> Instagram</a>
+                                <a href="#" class="btn btn-outline-primary btn-sm mt-1"><i class="bi bi-facebook"></i> Facebook</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

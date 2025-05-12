@@ -17,4 +17,6 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'), 
     path('kabinet/', views.shaxsiy_kabinet, name='shaxsiy_kabinet'),
     path('kabinet/tahrirlash/', views.profile_edit_view, name='profile_edit'),
+    path('boglanish/', views.contact_view, name='contact'), # <<<--- YANGI URL
+
 ]
