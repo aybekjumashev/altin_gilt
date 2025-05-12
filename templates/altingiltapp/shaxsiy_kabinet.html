@@ -1,8 +1,9 @@
 <!-- templates/altingiltapp/shaxsiy_kabinet.html -->
 {% extends "altingiltapp/base.html" %}
 {% load static %}
+{% load i18n %}
 
-{% block title %}Shaxsiy Kabinet - {{ user.username }}{% endblock %}
+{% block title %}Shaxsiy Kabinet - {{ user.first_name }}{% endblock %}
 
 {% block content %}
 <div class="container mt-4 mb-5">
@@ -33,11 +34,11 @@
                             <span class="text-end text-muted">{{ user.date_joined|date:"d M Y, H:i" }}</span>
                         </li>
                     </ul>
-                     <div class="mt-3 d-grid"> <!-- Tugma uchun -->
-                        <a href="#" class="btn btn-outline-primary disabled"> <!-- Hali funksional emas -->
-                             <i class="bi bi-pencil-square me-1"></i> Profilni Tahrirlash (Tez kunda)
-                        </a>
-                     </div>
+                    <div class="mt-3 d-grid">
+                       <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#profileEditModal">
+                            <i class="bi bi-pencil-square me-1"></i> Profilni Tahrirlash
+                       </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -47,7 +48,7 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
                  <h2 class="fw-bold mb-0">Mening E'lonlarim</h2>
                  <a href="{% url 'AltinGiltApp:elon_create' %}" class="btn btn-success">
-                    <i class="bi bi-plus-circle-fill me-2"></i> Yangi e'lon qo'shish
+                    <i class="bi bi-plus-circle-fill me-2"></i> Yangi e'lon
                  </a>
             </div>
             <hr class="mb-4">
@@ -72,10 +73,8 @@
                                             <a class="dropdown-item" href="#" onclick="confirmDelete('{{ elon.id }}', '{{ elon.nomi|escapejs }}')">
                                                  <i class="bi bi-trash3 me-2 text-danger"></i>O'chirish
                                             </a>
-                                            <!-- O'chirish uchun yashirin forma (hozircha ishlamaydi, view kerak) -->
-                                            <form id="delete-form-{{ elon.id }}" action="#" method="POST" style="display: none;">
+                                            <form id="delete-form-{{ elon.id }}" action="{% url 'AltinGiltApp:elon_delete' elon.id %}" method="POST" style="display: none;">
                                                 {% csrf_token %}
-                                                <!-- <input type="hidden" name="_method" value="DELETE"> -->
                                             </form>
                                         </li>
                                     </ul>
@@ -169,13 +168,68 @@
                         <i class="bi bi-info-circle-fill fs-4 d-block mb-2"></i>
                         <h5 class="alert-heading">Siz hali e'lon joylamagansiz.</h5>
                         <p>O'z ko'chmas mulkingizni sotish yoki ijaraga berish uchun hoziroq e'lon joylashtiring!</p>
-                        <hr>
-                        <a href="{% url 'AltinGiltApp:elon_create' %}" class="btn btn-success">
-                           <i class="bi bi-plus-circle-fill me-2"></i> Birinchi e'lonni qo'shish
-                        </a>
                     </div>
                 </div>
             {% endif %}
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Profilni Tahrirlash uchun Modal Oyna -->
+<div class="modal fade" id="profileEditModal" tabindex="-1" aria-labelledby="profileEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg"> {# modal-lg kattaroq oyna uchun #}
+        <div class="modal-content">
+            <form method="POST" action="{% url 'AltinGiltApp:profile_edit' %}" id="profileEditForm" novalidate>
+                {% csrf_token %}
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="profileEditModalLabel"><i class="bi bi-person-gear me-2"></i>{% trans "Shaxsiy ma'lumotlarni tahrirlash" %}</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {# Agar profile_edit_form contextda bo'lsa (xatolik bilan qaytganda) #}
+                    {% with form=profile_edit_form %} {# Agar viewda get_profile_edit_form metodi bo'lsa #}
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {% for error in form.non_field_errors %}
+                                    <p class="mb-0">{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">{% trans "Telefon raqami" %}:</label>
+                            <input type="text" class="form-control" value="{{ request.user.phone_number }}" readonly disabled>
+                            <div class="form-text text-muted small">{% trans "Telefon raqamini o'zgartirish uchun administratorga murojaat qiling." %}</div>
+                        </div>
+                        <hr>
+
+                        {% for field in form %}
+                            <div class="form-floating mb-3">
+                                {{ field }}
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {% if field.help_text %}
+                                    <div class="form-text text-muted small ms-1">{{ field.help_text|safe }}</div>
+                                {% endif %}
+                                {% if field.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in field.errors %}
+                                            <p class="mb-0">{{ error }}</p>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% endwith %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Bekor qilish" %}</button>
+                    <button type="submit" class="btn btn-info text-white">
+                        <i class="bi bi-save-fill me-2"></i> {% trans "Saqlash" %}
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -184,12 +238,9 @@
 {% block extra_scripts %}
 {{ block.super }}
 <script>
-// O'chirishni tasdiqlash funksiyasi
 function confirmDelete(elonId, elonNomi) {
     if (confirm(`Haqiqatan ham "${elonNomi}" nomli e'lonni o'chirmoqchimisiz? Bu amalni bekor qilib bo'lmaydi.`)) {
-        // Hali o'chirish viewi yo'q, shuning uchun formani submit qilmaymiz
-        // document.getElementById('delete-form-' + elonId).submit();
-        alert("E'lonni o'chirish funksiyasi hali to'liq sozlanmagan. Administrator bilan bog'laning.");
+        document.getElementById('delete-form-' + elonId).submit(); // Formani submit qilish
     }
 }
 
@@ -198,6 +249,24 @@ var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggl
 var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
   return new bootstrap.Tooltip(tooltipTriggerEl)
 })
+
+
+document.addEventListener('DOMContentLoaded', function () {
+    const profileEditModal = new bootstrap.Modal(document.getElementById('profileEditModal'));
+    
+    // Bu yerda serverdan keladigan `show_profile_modal_on_error` kabi
+    // o'zgaruvchini tekshirishimiz kerak. Uni <script> ichida yoki
+    // data-atribut orqali yuborish mumkin.
+    // Misol uchun, agar URLda #profileEditModalError bo'lsa:
+    if (window.location.hash === '#profileEditModalError') {
+        profileEditModal.show();
+        // Hashni olib tashlash (ixtiyoriy)
+        // window.history.replaceState(null, null, window.location.pathname + window.location.search);
+    }
+
+    // Muvaffaqiyatli saqlangandan keyin ma'lumotlarni yangilash (AJAXsiz qiyin)
+    // Hozircha, sahifa yangilanganda ma'lumotlar o'zi yangilanadi.
+});
 </script>
 {% endblock %}
 

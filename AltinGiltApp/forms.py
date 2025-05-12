@@ -43,6 +43,27 @@ class CustomAuthenticationForm(AuthenticationForm):
 
 
 
+class CustomUserChangeForm(forms.ModelForm):
+    # email = forms.EmailField(required=False, widget=forms.EmailInput(attrs={'class': 'form-control mb-2'}))
+    # Agar parolni ham shu formadan o'zgartirishni xohlasangiz, bu tavsiya etilmaydi.
+    # Parol uchun alohida PasswordChangeForm ishlatgan ma'qul.
+
+    class Meta:
+        model = CustomUser
+        fields = ('first_name', 'last_name', 'email') # Tahrirlanadigan maydonlar
+        # Telefon raqamini (USERNAME_FIELD) bu formadan o'zgartirishga ruxsat bermaymiz.
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Maydonlarga Bootstrap klasslarini qo'shish
+        self.fields['first_name'].widget.attrs.update({'class': 'form-control mb-2', 'placeholder': _("Ismingiz")})
+        self.fields['last_name'].widget.attrs.update({'class': 'form-control mb-2', 'placeholder': _("Familiyangiz (ixtiyoriy)")})
+        self.fields['email'].widget.attrs.update({'class': 'form-control mb-2', 'placeholder': _("example@mail.com (ixtiyoriy)")})
+        
+        # Agar maydonlar modelda 'blank=True' bo'lmasa, 'required=False' ni bu yerda o'rnatish kerak
+        self.fields['last_name'].required = False
+        self.fields['email'].required = False # Modelda null=True, blank=True bo'lishi kerak
+        
 
 class ElonForm(forms.ModelForm):
     # joylashuvi va turi endi ModelChoiceField bo'ladi

@@ -124,6 +124,10 @@
                                     <a href="#" onclick="confirmDelete('{{ elon.id }}', '{{ elon.nomi|escapejs }}')" class="btn btn-outline-danger">
                                         <i class="bi bi-trash3"></i> O'chirish
                                     </a>
+                                    {# Yashirin forma o'chirish uchun #}
+                                    <form id="delete-form-{{ elon.id }}" action="{% url 'AltinGiltApp:elon_delete' elon.id %}" method="POST" style="display: none;">
+                                        {% csrf_token %}
+                                    </form>
                                 </div>
                              {% endif %}
                         </div>
@@ -189,11 +193,10 @@
 {% block extra_scripts %}
 {{ block.super }}
 <script>
-// O'chirishni tasdiqlash funksiyasi (shaxsiy_kabinet.html dagi bilan bir xil)
-function confirmDelete(elonId, elonNomi) {
-    if (confirm(`Haqiqatan ham "${elonNomi}" nomli e'lonni o'chirmoqchimisiz? Bu amalni bekor qilib bo'lmaydi.`)) {
-        alert("E'lonni o'chirish funksiyasi hali to'liq sozlanmagan.");
+    function confirmDelete(elonId, elonNomi) {
+        if (confirm(`Haqiqatan ham "${elonNomi}" nomli e'lonni o'chirmoqchimisiz? Bu amalni bekor qilib bo'lmaydi.`)) {
+            document.getElementById('delete-form-' + elonId).submit();
+        }
     }
-}
 </script>
 {% endblock %}

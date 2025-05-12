@@ -113,4 +113,4 @@ class ElonAdmin(admin.ModelAdmin):
             messages.warning(request, "E'lon rad etildi, lekin sababi ko'rsatilmadi. Iltimos, izoh qoldiring.")
         super().save_model(request, obj, form, change)
 
-admin.site.register(Rasm)
+# admin.site.register(Rasm)

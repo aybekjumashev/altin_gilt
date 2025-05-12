@@ -3,14 +3,16 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse # Oddiy matn qaytarish uchun (kam ishlatiladi)
 from .models import Elon, Rasm, Shahar, Tur
 from django.contrib.auth.decorators import login_required # Faqat kirgan foydalanuvchilar uchun cheklov
+from django.views.decorators.http import require_POST
 from django.contrib.auth import login, authenticate, logout # Kirish/chiqish funksiyalari
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm # Standart kirish va ro'yxatdan o'tish formalari
 from django.contrib import messages # Xabarlarni ko'rsatish uchun (Flask'dagi flash)
-from .forms import CustomUserCreationForm, CustomAuthenticationForm, ElonForm, RasmForm # Yangi formalarni import qilamiz
+from .forms import CustomUserCreationForm, CustomAuthenticationForm, ElonForm, RasmForm, CustomUserChangeForm
 from django.forms import modelformset_factory, inlineformset_factory  # Bir nechta rasm yuklash uchun
 from django.db import transaction # Bir nechta DB operatsiyalarini atomik qilish uchun
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib.auth import get_user_model
+from django.utils.translation import gettext_lazy as _
 
 
 CustomUser = get_user_model() # CustomUser modelini olish
@@ -220,6 +222,28 @@ def elon_tahrirlash(request, elon_id):
     return render(request, 'altingiltapp/elon_qoshish.html', context)
 
 
+@require_POST # Bu dekorator view faqat POST requestlarni qabul qilishini ta'minlaydi
+@login_required # Faqat kirgan foydalanuvchilar uchun
+def elon_ochirish(request, elon_id):
+    # E'lonni topish (faqat o'zining e'lonini o'chira olsin)
+    elon = get_object_or_404(Elon, pk=elon_id, user=request.user)
+    
+    try:
+        elon_nomi = elon.nomi # Xabar uchun e'lon nomini saqlab qolamiz
+        elon.delete() # E'lonni o'chirish (unga bog'liq rasmlar ham CASCADE tufayli o'chadi)
+        messages.success(request, f"'{elon_nomi}' nomli e'lon muvaffaqiyatli o'chirildi.")
+    except Exception as e:
+        messages.error(request, f"E'lonni o'chirishda xatolik yuz berdi: {e}")
+        # Agar xatolik bo'lsa, shaxsiy kabinetga qaytish yoki boshqa joyga
+        return redirect('AltinGiltApp:shaxsiy_kabinet') 
+        # Yoki agar HTTP_REFERER bo'lsa, o'sha joyga:
+        # return redirect(request.META.get('HTTP_REFERER', 'AltinGiltApp:shaxsiy_kabinet'))
+
+
+    # Muvaffaqiyatli o'chirilgandan so'ng shaxsiy kabinetga yo'naltirish
+    return redirect('AltinGiltApp:shaxsiy_kabinet')
+
+
 def register_view(request):
     if request.user.is_authenticated:
         return redirect('AltinGiltApp:bosh_sahifa') # Agar kirgan bo'lsa, bosh sahifaga
@@ -298,10 +322,52 @@ def logout_view(request):
 @login_required
 def shaxsiy_kabinet(request):
     elonlar = Elon.objects.filter(user=request.user).order_by('-created_at')
+    profile_form_instance = CustomUserChangeForm(instance=request.user)
     context = {
         'elonlar': elonlar,
         'user': request.user,
+        'profile_edit_form': profile_form_instance,
         'ElonStatusChoices': Elon.StatusChoices # Statuslarni shablonda taqqoslash uchun
     }
     return render(request, 'altingiltapp/shaxsiy_kabinet.html', context)
 
+
+@login_required
+def profile_edit_view(request):
+    user_to_edit = request.user # Yoki get_object_or_404(CustomUser, pk=request.user.pk)
+    if request.method == 'POST':
+        form = CustomUserChangeForm(request.POST, instance=user_to_edit)
+        if form.is_valid():
+            form.save()
+            messages.success(request, _("Profilingiz muvaffaqiyatli yangilandi!"))
+            return redirect('AltinGiltApp:shaxsiy_kabinet') 
+        else:
+            # Xatoliklarni messages orqali yuborish va modalni ochish uchun flag
+            # messages.error(request, _("Ma'lumotlarni saqlashda xatolik yuz berdi. Iltimos, xatolarni to'g'rilang."))
+            # Yoki har bir xatoni alohida:
+            for field, errors_list in form.errors.items():
+                for error in errors_list:
+                    if field == '__all__':
+                        messages.error(request, error)
+                    else:
+                        messages.error(request, f"{form.fields[field].label}: {error}")
+            
+            # Sahifani qayta yuklash o'rniga, shaxsiy_kabinet ga redirect qilib,
+            # URL ga fragment qo'shamiz, JavaScript uni ushlab modalni ochadi.
+            # Yana bir variant: session'ga flag qo'yish.
+            # Eng soddasi: redirect bilan birga fragment.
+            from django.urls import reverse
+            redirect_url = reverse('AltinGiltApp:shaxsiy_kabinet') + '#profileEditModalError'
+            return redirect(redirect_url)
+    else:
+        # GET request uchun bu view chaqirilmaydi, agar modal to'g'ridan-to'g'ri shaxsiy_kabinet.html da bo'lsa
+        # Agar alohida sahifa bo'lsa, bu kerak edi:
+        # form = CustomUserChangeForm(instance=user_to_edit)
+        # Agar modalni AJAX orqali yuklasak, bu view GET uchun HTML fragment qaytarishi mumkin.
+        # Hozirgi yondashuvda GET uchun bu view kerak emas, chunki forma shaxsiy_kabinet.html da.
+        # Faqat POST ni qayta ishlaydi.
+        pass # Yoki Http405 qaytarish
+
+    # Bu view faqat POSTni qayta ishlashi kerak, shuning uchun GET da bu yerga kelmasligi kerak.
+    # Agar kelib qolsa, shaxsiy_kabinet ga qaytaramiz.
+    return redirect('AltinGiltApp:shaxsiy_kabinet')
