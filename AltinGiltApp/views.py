@@ -90,7 +90,7 @@ def elon_sahifasi(request, elon_id):
 def elon_qoshish(request): 
     RasmInlineFormSet = inlineformset_factory(
         Elon, Rasm, form=RasmForm,
-        extra=5, max_num=10, min_num=3,
+        extra=10, max_num=10, min_num=3,
         validate_min=True, can_delete=False
     )
 
@@ -134,8 +134,9 @@ def elon_tahrirlash(request, elon_id):
     RasmInlineFormSet = inlineformset_factory(
         Elon, Rasm, form=RasmForm,
         fields=['image'], # Faqat 'image' maydonini ishlatamiz RasmFormda
-        extra=3,
+        extra=10,
         min_num=0, # Tahrirda minimal shart emas
+        max_num=10,
         validate_min=False,
         can_delete=True
     )

@@ -99,7 +99,7 @@
                                 {{ formset.management_form }} <!-- MUHIM! -->
                                 <div id="image-forms-container">
                                     {% for form in formset %}
-                                    <div class="image-form-wrapper mb-3 p-3 {% if not form.is_bound and not form.initial and forloop.counter0 >= formset.initial_form_count|add:1 %}d-none{% endif %}" id="{{ formset.prefix }}-{{ forloop.counter0 }}-wrapper" data-form-index="{{ forloop.counter0 }}">
+                                    <div class="image-form-wrapper mb-3 p-3 d-none" id="{{ formset.prefix }}-{{ forloop.counter0 }}-wrapper" data-form-index="{{ forloop.counter0 }}">
                                         {{ form.id }}
                                         <div class="d-flex justify-content-between align-items-center mb-2 position-relative">
                                                 <label for="{{ form.image.id_for_label }}" class="form-label fw-bold small mb-0">
@@ -166,214 +166,250 @@
 
 {% block extra_scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const imageFormsContainer = document.getElementById('image-forms-container');
-    const addFormBtn = document.getElementById('add-image-form-btn');
-    const formsetPrefix = "{{ formset.prefix }}";
-    const totalFormsInput = document.getElementById(`id_${formsetPrefix}-TOTAL_FORMS`);
-    const maxForms = parseInt(document.getElementById(`id_${formsetPrefix}-MAX_NUM_FORMS`).value);
-    const minForms = parseInt(document.getElementById(`id_${formsetPrefix}-MIN_NUM_FORMS`).value); // Agar 0 bo'lsa, bitta ham shart emas
-    const initialFormsCount = parseInt(document.getElementById(`id_${formsetPrefix}-INITIAL_FORMS`).value);
-    const imageCountStatus = document.getElementById('image-count-status');
-    const isEditMode = {{ elon|yesno:"true,false" }};
-
-    function updateFormVisibilityAndCount() {
-        let visibleFormsCount = 0;
-        const allForms = imageFormsContainer.querySelectorAll('.image-form-wrapper');
+    document.addEventListener('DOMContentLoaded', function() {
+        const imageFormsContainer = document.getElementById('image-forms-container');
+        const addFormBtn = document.getElementById('add-image-form-btn');
+        const formsetPrefix = "{{ formset.prefix|default:'rasmlar_yangi' }}";
         
-        allForms.forEach(wrapper => {
-            if (!wrapper.classList.contains('d-none')) {
-                visibleFormsCount++;
-            }
-        });
-
-        if (visibleFormsCount >= maxForms) {
-            addFormBtn.style.display = 'none';
-        } else {
-            addFormBtn.style.display = 'inline-block';
+        if (!imageFormsContainer || !addFormBtn || !document.getElementById(`id_${formsetPrefix}-TOTAL_FORMS`)) {
+            console.error("Kerakli formset elementlari topilmadi. JavaScript ishlamaydi.");
+            if (addFormBtn) addFormBtn.style.display = 'none';
+            return;
         }
-        imageCountStatus.textContent = `Yuklangan/Tanlangan rasmlar: ${countActualImages()} / ${maxForms}`;
-    }
-
-    function countActualImages() {
-        let count = 0;
+    
+        const totalFormsInput = document.getElementById(`id_${formsetPrefix}-TOTAL_FORMS`);
+        const maxForms = parseInt(document.getElementById(`id_${formsetPrefix}-MAX_NUM_FORMS`).value);
+        const minForms = parseInt(document.getElementById(`id_${formsetPrefix}-MIN_NUM_FORMS`).value);
+        const initialFormsCount = parseInt(document.getElementById(`id_${formsetPrefix}-INITIAL_FORMS`).value);
+        const imageCountStatus = document.getElementById('image-count-status');
+        
+        const isEditMode = {{ elon|yesno:"true,false" }};
+    
+        function countActualImages() {
+            let count = 0;
+            imageFormsContainer.querySelectorAll('.image-form-wrapper:not(.d-none)').forEach(wrapper => {
+                const preview = wrapper.querySelector('.image-preview');
+                const deleteCheckbox = wrapper.querySelector('input[type="checkbox"][name$="-DELETE"]');
+                const fileInput = wrapper.querySelector('input[type="file"]');
+    
+                if (deleteCheckbox && deleteCheckbox.checked) return;
+                if ((preview && preview.src && !preview.src.endsWith('#') && preview.style.display === 'block') || 
+                    (fileInput && fileInput.files && fileInput.files.length > 0)) {
+                    count++;
+                }
+            });
+            return count;
+        }
+    
+        function updateFormVisibilityAndCount() {
+            let visibleFormsCount = 0;
+            let hiddenFormsCount = 0;
+            const allForms = imageFormsContainer.querySelectorAll('.image-form-wrapper');
+            
+            allForms.forEach(wrapper => {
+                if (!wrapper.classList.contains('d-none')) {
+                    visibleFormsCount++;
+                } else {
+                    hiddenFormsCount++;
+                }
+            });
+    
+            if (visibleFormsCount < maxForms && hiddenFormsCount > 0) {
+                addFormBtn.style.display = 'inline-block';
+            } else {
+                addFormBtn.style.display = 'none';
+            }
+            
+            if (imageCountStatus) {
+                 imageCountStatus.textContent = `Rasmlar: ${countActualImages()} (min: ${minForms}, max: ${maxForms})`;
+            }
+        }
+    
         imageFormsContainer.querySelectorAll('.image-form-wrapper').forEach(wrapper => {
-            if (wrapper.classList.contains('d-none')) return;
-
+            const input = wrapper.querySelector('input[type="file"]');
             const preview = wrapper.querySelector('.image-preview');
+            const previewContainer = wrapper.querySelector('.image-preview-container');
+            const clearBtn = wrapper.querySelector('.clear-image-btn');
             const deleteCheckbox = wrapper.querySelector('input[type="checkbox"][name$="-DELETE"]');
-            const fileInput = wrapper.querySelector('input[type="file"]');
-
-            if (deleteCheckbox && deleteCheckbox.checked) {
-                return; // O'chirishga belgilanganlar hisoblanmaydi
-            }
+    
+            // Sahifa yuklanganda mavjud rasm bo'lsa, konteynerni ko'rsatish
             if (preview && preview.src && !preview.src.endsWith('#') && preview.style.display === 'block') {
-                count++; // Ko'rinib turgan preview bor
-            } else if (fileInput && fileInput.files && fileInput.files.length > 0) {
-                count++; // Fayl tanlangan, lekin preview hali yuklanmagan bo'lishi mumkin
+                if (previewContainer) previewContainer.classList.add('has-image');
+                if (!(deleteCheckbox && deleteCheckbox.checked)) {
+                     if (clearBtn) clearBtn.style.display = 'inline-block';
+                }
+            } else if (input && input.files && input.files.length > 0) { // Validatsiya xatosi bilan qaytganda (fayl nomi saqlanmaydi)
+                // Bu holat qiyin, chunki fayl inputining qiymati bo'sh bo'ladi.
+                // Agar xatolik bo'lsa va preview ko'rsatilsa (masalan, JS xotirasidan), konteynerni ko'rsatish kerak.
+                // Hozircha, agar input.files.length > 0 (bu faqat JSda fayl tanlanganda bo'ladi, serverdan keyin emas)
+                // yoki previewda rasm bo'lsa, konteyner ko'rsatiladi.
+            } else {
+                if (previewContainer) previewContainer.classList.remove('has-image');
             }
-        });
-        return count;
-    }
-
-
-    imageFormsContainer.querySelectorAll('.image-form-wrapper').forEach(wrapper => {
-        const input = wrapper.querySelector('input[type="file"]');
-        const preview = wrapper.querySelector('.image-preview');
-        const clearBtn = wrapper.querySelector('.clear-image-btn');
-        const deleteCheckbox = wrapper.querySelector('input[type="checkbox"][name$="-DELETE"]');
-
-        // Initial state for clear button
-        if (preview && preview.src && !preview.src.endsWith('#') && preview.style.display === 'block') {
-            if (!(deleteCheckbox && deleteCheckbox.checked)) { // Show if not marked for delete
-                 clearBtn.style.display = 'inline-block';
+    
+    
+            if (input) {
+                input.addEventListener('change', function(event) {
+                    const file = event.target.files[0];
+                    if (file && preview && previewContainer) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            preview.src = e.target.result;
+                            preview.style.display = 'block';
+                            preview.style.opacity = '1';
+                            previewContainer.classList.add('has-image');
+                        }
+                        reader.readAsDataURL(file);
+                        if (clearBtn) clearBtn.style.display = 'inline-block';
+                        if (deleteCheckbox) {
+                            deleteCheckbox.checked = false;
+                            input.disabled = false;
+                            preview.style.opacity = '1';
+                        }
+                    } else if (preview && previewContainer) {
+                        if (!(preview.src && preview.src.includes('/media/'))) { // Agar mavjud rasm bo'lmasa
+                            preview.src = '#';
+                            preview.style.display = 'none';
+                            previewContainer.classList.remove('has-image');
+                            if (clearBtn) clearBtn.style.display = 'none';
+                        }
+                    }
+                    updateFormVisibilityAndCount();
+                });
             }
-        } else if (input && input.files && input.files.length > 0) {
-             clearBtn.style.display = 'inline-block'; // If file selected on server error reload
-        }
-
-
-        if (input) {
-            input.addEventListener('change', function(event) {
-                const file = event.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        preview.src = e.target.result;
-                        preview.style.display = 'block';
-                        preview.style.opacity = '1'; // Reset opacity
+    
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function() {
+                    if (input) {
+                        input.value = null; 
+                        try { input.files = new DataTransfer().files; } catch (e) {}
                     }
-                    reader.readAsDataURL(file);
-                    clearBtn.style.display = 'inline-block';
-                    if (deleteCheckbox) { // Agar yangi fayl tanlansa, DELETE ni olib tashlash
-                        deleteCheckbox.checked = false;
-                        if (input) input.disabled = false; // Re-enable input
-                        preview.style.opacity = '1';
-                    }
-                } else { // Fayl tanlanmagan (masalan, 'Cancel' bosilgan)
-                    // Agar bu mavjud rasm bo'lmasa (URL da /media/ yo'q bo'lsa)
-                    if (!(preview.src && preview.src.includes('/media/'))) {
+                    if (preview) {
                         preview.src = '#';
                         preview.style.display = 'none';
-                        clearBtn.style.display = 'none';
                     }
-                }
-                updateFormVisibilityAndCount();
-            });
-        }
-
-        if (clearBtn) {
-            clearBtn.addEventListener('click', function() {
-                input.value = null; // Faylni tozalash
-                // Eski brauzerlar uchun qo'shimcha
-                try { input.files = new DataTransfer().files; } catch (e) {}
-
-                preview.src = '#';
-                preview.style.display = 'none';
-                clearBtn.style.display = 'none';
-
-                // Agar bu mavjud rasm bo'lsa (ya'ni DELETE checkboxi bor bo'lsa) va u belgilangan bo'lsa,
-                // uni olib tashlamaymiz, chunki foydalanuvchi "O'chirish"ni bekor qilmoqchi bo'lishi mumkin.
-                // Bu tugma faqat yangi tanlangan faylni yoki previewni tozalash uchun.
-                // Mavjud rasmni "o'chirish"ni bekor qilish uchun DELETE checkboxini olib tashlash kerak.
-                if (deleteCheckbox && deleteCheckbox.checked) {
-                    // Agar foydalanuvchi "Tozalash"ni bossa va "O'chirish" belgilangan bo'lsa,
-                    // "O'chirish"ni ham olib tashlaymizmi? Bu UX savoli.
-                    // Hozircha faqat inputni tozalaymiz.
-                }
-                updateFormVisibilityAndCount();
-            });
-        }
-
-        if (deleteCheckbox) {
-            deleteCheckbox.addEventListener('change', function() {
-                if (this.checked) {
-                    preview.style.opacity = '0.5';
-                    if (input) input.disabled = true; // Fayl inputini o'chirish
-                    clearBtn.style.display = 'none'; // Tozalash tugmasini yashirish
-                } else {
-                    preview.style.opacity = '1';
-                    if (input) input.disabled = false; // Fayl inputini qayta yoqish
-                    // Agar previewda rasm bo'lsa (bekor qilingandan keyin), tozalash tugmasini ko'rsatish
-                    if (preview.src && !preview.src.endsWith('#') && preview.style.display === 'block') {
-                        clearBtn.style.display = 'inline-block';
-                    }
-                }
-                updateFormVisibilityAndCount();
-            });
-            // Sahifa yuklanganda DELETE checkboxining holatini tekshirish
-            if (deleteCheckbox.checked) {
-                preview.style.opacity = '0.5';
-                if (input) input.disabled = true;
-                clearBtn.style.display = 'none';
+                    if (previewContainer) previewContainer.classList.remove('has-image');
+                    clearBtn.style.display = 'none';
+                    updateFormVisibilityAndCount();
+                });
             }
+    
+            if (deleteCheckbox) {
+                deleteCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        if (preview) preview.style.opacity = '0.5';
+                        if (input) input.disabled = true;
+                        if (clearBtn) clearBtn.style.display = 'none';
+                        // Konteyner ko'rinib turaveradi, chunki "o'chirish" belgisi bor
+                        if (previewContainer && preview && preview.src && !preview.src.endsWith('#')) {
+                            previewContainer.classList.add('has-image');
+                        }
+                    } else { // O'chirish belgisi olib tashlandi
+                        if (preview) preview.style.opacity = '1';
+                        if (input) input.disabled = false;
+                        if (preview && preview.src && !preview.src.endsWith('#') && preview.style.display === 'block') {
+                            if (clearBtn) clearBtn.style.display = 'inline-block';
+                            if (previewContainer) previewContainer.classList.add('has-image');
+                        } else {
+                             if (previewContainer) previewContainer.classList.remove('has-image');
+                        }
+                    }
+                    updateFormVisibilityAndCount();
+                });
+                // Sahifa yuklanganda DELETE checkbox holati
+                if (deleteCheckbox.checked) {
+                    if (preview) preview.style.opacity = '0.5';
+                    if (input) input.disabled = true;
+                    if (clearBtn) clearBtn.style.display = 'none';
+                     if (previewContainer && preview && preview.src && !preview.src.endsWith('#')) { // Agar rasm bo'lsa, konteyner ko'rinsin
+                        previewContainer.classList.add('has-image');
+                     }
+                }
+            }
+        });
+    
+        if (addFormBtn) {
+            addFormBtn.addEventListener('click', function() {
+                // ... (avvalgidek, yangi formani ochish va tozalash) ...
+                const hiddenForms = imageFormsContainer.querySelectorAll('.image-form-wrapper.d-none');
+                if (hiddenForms.length > 0) {
+                    const formToShow = hiddenForms[0];
+                    formToShow.classList.remove('d-none');
+                    
+                    const newFormInput = formToShow.querySelector('input[type="file"]');
+                    const newFormPreview = formToShow.querySelector('.image-preview');
+                    const newFormPreviewContainer = formToShow.querySelector('.image-preview-container');
+                    const newFormClearBtn = formToShow.querySelector('.clear-image-btn');
+                    const newFormDeleteCb = formToShow.querySelector('input[type="checkbox"][name$="-DELETE"]');
+    
+                    if (newFormInput) { newFormInput.value = null; newFormInput.disabled = false; }
+                    if (newFormPreview) { newFormPreview.src = '#'; newFormPreview.style.display = 'none'; newFormPreview.style.opacity = '1';}
+                    if (newFormPreviewContainer) newFormPreviewContainer.classList.remove('has-image');
+                    if (newFormClearBtn) newFormClearBtn.style.display = 'none';
+                    if (newFormDeleteCb) newFormDeleteCb.checked = false;
+    
+                    updateFormVisibilityAndCount();
+                }
+            });
         }
+        function initializeFormDisplay() {
+            const allWrappers = imageFormsContainer.querySelectorAll('.image-form-wrapper');
+            if (allWrappers.length === 0) {
+                updateFormVisibilityAndCount();
+                return;
+            }
+
+            let numberToDisplayInitially;
+
+            if (isEditMode) {
+                // Tahrirda: Faqat mavjud rasmlar uchun formalar (initialFormsCount)
+                numberToDisplayInitially = initialFormsCount;
+            } else {
+                // Yangi e'londa: Minimal talab qilingan formalar soni (minForms)
+                numberToDisplayInitially = minForms > 0 ? minForms : 1;
+            }
+            
+            // Ko'rsatiladiganlar soni maksimaldan va jami render qilinganlardan oshmasin
+            numberToDisplayInitially = Math.min(numberToDisplayInitially, maxForms, allWrappers.length);
+
+            allWrappers.forEach((wrapper, index) => {
+                const previewContainer = wrapper.querySelector('.image-preview-container');
+                const isInitialFormWithImage = index < initialFormsCount && wrapper.querySelector('.image-preview[src*="/media/"]');
+                const hasError = wrapper.querySelector('.invalid-feedback.d-block');
+
+                // Har bir formani boshida yashirin qilamiz
+                wrapper.classList.add('d-none');
+                if (previewContainer) previewContainer.classList.remove('has-image');
+
+
+                if (index < numberToDisplayInitially) {
+                    // Agar bu ko'rsatilishi kerak bo'lgan dastlabki formalardan biri bo'lsa
+                    wrapper.classList.remove('d-none');
+                    if (isInitialFormWithImage || (hasError && wrapper.querySelector('.image-preview[style*="display:block"]'))) {
+                        if (previewContainer) previewContainer.classList.add('has-image');
+                    } else { // Agar bu bo'sh ochilgan forma bo'lsa (masalan, yangi e'londa)
+                        const input = wrapper.querySelector('input[type="file"]');
+                        const preview = wrapper.querySelector('.image-preview');
+                        const clearBtn = wrapper.querySelector('.clear-image-btn');
+                        if(input) input.value = null;
+                        if(preview) { preview.src = '#'; preview.style.display = 'none'; }
+                        if(clearBtn) clearBtn.style.display = 'none';
+                    }
+                } else if (isInitialFormWithImage || hasError) {
+                    // Agar bu initial forma yoki xatolikli forma bo'lsa, lekin numberToDisplayInitially dan tashqarida qolsa ham ko'rsatamiz
+                    // (bu kamdan-kam holat, lekin ehtiyot shart)
+                    wrapper.classList.remove('d-none');
+                    if (previewContainer && (isInitialFormWithImage || (hasError && wrapper.querySelector('.image-preview[style*="display:block"]')))) {
+                        previewContainer.classList.add('has-image');
+                    }
+                }
+            });
+            updateFormVisibilityAndCount();
+        }
+    
+        initializeFormDisplay();
     });
-
-    if (addFormBtn) {
-        addFormBtn.addEventListener('click', function() {
-            const hiddenForms = imageFormsContainer.querySelectorAll('.image-form-wrapper.d-none');
-            if (hiddenForms.length > 0) {
-                hiddenForms[0].classList.remove('d-none');
-                updateFormVisibilityAndCount();
-            }
-        });
-    }
-
-    // Boshlang'ich ko'rinishni sozlash
-    function initializeFormDisplay() {
-        const allWrappers = imageFormsContainer.querySelectorAll('.image-form-wrapper');
-        let visibleCount = 0;
-        let formsToInitiallyShow = isEditMode ? initialFormsCount : (minForms > 0 ? minForms : 1);
-        if (isEditMode && initialFormsCount === 0 && minForms > 0) { // Tahrir, lekin avval rasmlar bo'lmagan, endi minimal talab bor
-            formsToInitiallyShow = minForms;
-        } else if (isEditMode && initialFormsCount === 0 && minForms === 0) { // Tahrir, avval rasm yo'q, minimal ham yo'q
-             formsToInitiallyShow = 1; // Kamida bitta bo'sh forma ko'rsatamiz
-        }
-
-
-        allWrappers.forEach((wrapper, index) => {
-            const isInitial = index < initialFormsCount;
-            const preview = wrapper.querySelector('.image-preview');
-            const hasInitialImage = isInitial && preview && preview.src && !preview.src.endsWith('#') && preview.style.display === 'block';
-            const hasBoundFileError = wrapper.querySelector('input[type="file"]').value || wrapper.querySelector('.invalid-feedback.d-block'); // Xatolik bilan qaytganda
-
-            if (isInitial || hasBoundFileError) { // Mavjud formalar yoki xatolik bilan qaytganlar har doim ko'rinadi
-                wrapper.classList.remove('d-none');
-                visibleCount++;
-            } else if (visibleCount < formsToInitiallyShow && index >= initialFormsCount) { // Bo'sh formalarni kerakli miqdorda ko'rsatish
-                wrapper.classList.remove('d-none');
-                visibleCount++;
-            }
-            else if (index >= initialFormsCount && !hasBoundFileError) { // Qolgan bo'sh formalarni yashirish
-                 wrapper.classList.add('d-none');
-            }
-        });
-        // Agar minimal talab bajarilmagan bo'lsa va yetarlicha bo'sh forma ko'rsatilmagan bo'lsa, yana ochish
-        let currentActualImages = countActualImages();
-        let neededEmptyForms = (minForms > currentActualImages && !isEditMode) ? (minForms - currentActualImages) : 0;
-        if (isEditMode && initialFormsCount === 0 && minForms > 0) neededEmptyForms = minForms; // tahrir, rasm yo'q, min talab bor
-
-
-        if (neededEmptyForms > 0) {
-             const hiddenEmptyForms = Array.from(imageFormsContainer.querySelectorAll('.image-form-wrapper.d-none'))
-                                       .filter(w => {
-                                           const inp = w.querySelector('input[type="file"]');
-                                           const prev = w.querySelector('.image-preview');
-                                           return (!inp || !inp.value) && (!prev || !prev.src || prev.src.endsWith('#'));
-                                       });
-            for(let i=0; i< Math.min(neededEmptyForms, hiddenEmptyForms.length); i++){
-                hiddenEmptyForms[i].classList.remove('d-none');
-            }
-        }
-
-
-        updateFormVisibilityAndCount();
-    }
-
-    initializeFormDisplay();
-});
-</script>
+    </script>
 {% endblock %}
 
 {% block extra_head %}
@@ -385,18 +421,20 @@ document.addEventListener('DOMContentLoaded', function() {
         border-radius: 0.375rem;
         min-height: 180px; /* Kamaytirildi */
         position: relative;
-        display: flex;
+        display: none;
         align-items: center;
         justify-content: center;
         overflow: hidden;
         margin-bottom: 0.5rem;
+    }
+    .image-preview-container.has-image { /* Rasm bor bo'lganda bu klass qo'shiladi */
+        display: flex; /* Yoki block, qaysi biri layoutga mos kelsa */
     }
     .image-preview {
         max-height: 160px; /* Kamaytirildi */
         max-width: 95%;
         height: auto;
         object-fit: contain;
-        display: none; /* Boshida yashirin */
     }
     .clear-image-btn { /* remove-image-btn nomi o'zgartirildi */
         /* position: absolute;
