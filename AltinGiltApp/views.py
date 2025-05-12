@@ -1,7 +1,7 @@
 # AltinGiltApp/views.py
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse # Oddiy matn qaytarish uchun (kam ishlatiladi)
-from .models import Elon, Rasm # Modellarimizni import qilamiz
+from .models import Elon, Rasm, Shahar, Tur
 from django.contrib.auth.decorators import login_required # Faqat kirgan foydalanuvchilar uchun cheklov
 from django.contrib.auth import login, authenticate, logout # Kirish/chiqish funksiyalari
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm # Standart kirish va ro'yxatdan o'tish formalari
@@ -20,38 +20,51 @@ CustomUser = get_user_model() # CustomUser modelini olish
 
 def bosh_sahifa(request):
     elonlar = Elon.objects.filter(status=Elon.StatusChoices.APPROVED).order_by('-created_at')[:3]
-    context = {'elonlar': elonlar}
+    shaharlar = Shahar.objects.all() # Qidiruv formasi uchun
+    turlar = Tur.objects.all()       # Qidiruv formasi uchun
+    context = {
+        'elonlar': elonlar,
+        'shaharlar': shaharlar,
+        'turlar': turlar,
+    }
     return render(request, 'altingiltapp/index.html', context)
 
 
 def elonlar_sahifasi(request):
-    elonlar_list = Elon.objects.filter(status=Elon.StatusChoices.APPROVED).order_by('-created_at')
-    shahar = request.GET.get('shahar')
-    tur = request.GET.get('tur')
+    elonlar_list = Elon.objects.select_related('joylashuvi', 'turi', 'user').filter(status=Elon.StatusChoices.APPROVED).order_by('-created_at')
+    
+    # Filtrlash uchun ma'lumotlar
+    shaharlar = Shahar.objects.all()
+    turlar = Tur.objects.all()
 
-    if shahar:
-        elonlar_list = elonlar_list.filter(joylashuvi__icontains=shahar)
-    if tur:
-        elonlar_list = elonlar_list.filter(turi=tur)
+    # GET parametrlari (endi ID bo'yicha bo'lishi mumkin, yoki nomi bo'yicha - hozircha nomi deb faraz qilamiz)
+    shahar_filter_nomi = request.GET.get('shahar_nomi') # Yoki shahar_id
+    tur_filter_nomi = request.GET.get('tur_nomi')       # Yoki tur_id
 
-    # Pagination logikasi
-    paginator = Paginator(elonlar_list, 9) # Har sahifada 9 ta e'lon
+    if shahar_filter_nomi:
+        elonlar_list = elonlar_list.filter(joylashuvi__nomi__iexact=shahar_filter_nomi) # __iexact nomi bo'yicha
+        # Yoki agar ID bo'lsa: elonlar_list = elonlar_list.filter(joylashuvi_id=shahar_id_filter)
+    if tur_filter_nomi:
+        elonlar_list = elonlar_list.filter(turi__nomi__iexact=tur_filter_nomi)
+        # Yoki agar ID bo'lsa: elonlar_list = elonlar_list.filter(tur_id=tur_id_filter)
+
+    paginator = Paginator(elonlar_list, 9)
     page_number = request.GET.get('page')
     try:
         elonlar = paginator.page(page_number)
     except PageNotAnInteger:
-        # Agar page parametri son bo'lmasa, birinchi sahifani ko'rsatish
         elonlar = paginator.page(1)
     except EmptyPage:
-        # Agar page raqami diapazondan tashqarida bo'lsa, oxirgi sahifani ko'rsatish
         elonlar = paginator.page(paginator.num_pages)
 
     context = {
-        'elonlar': elonlar, # Endi bu page obyekti
-        'is_paginated': True, # Shablon uchun flag
-        'page_obj': elonlar, # Shablon standart nomni ishlatishi uchun
-        'selected_shahar': shahar,
-        'selected_tur': tur,
+        'elonlar': elonlar,
+        'is_paginated': True,
+        'page_obj': elonlar,
+        'shaharlar': shaharlar, # Filtr uchun
+        'turlar': turlar,       # Filtr uchun
+        'selected_shahar_nomi': shahar_filter_nomi, # Tanlangan filtrni ko'rsatish uchun
+        'selected_tur_nomi': tur_filter_nomi,       # Tanlangan filtrni ko'rsatish uchun
         'ElonStatusChoices': Elon.StatusChoices 
     }
     return render(request, 'altingiltapp/elonlar.html', context)
@@ -59,20 +72,13 @@ def elonlar_sahifasi(request):
 
 # Alohida e'lon sahifasi
 def elon_sahifasi(request, elon_id):
-    # Faqat tasdiqlangan e'lonlarni ko'rsatish, yoki agar foydalanuvchi o'zining e'lonini ko'rayotgan bo'lsa
-    elon = get_object_or_404(Elon, pk=elon_id)
-    
-    if elon.status == Elon.StatusChoices.APPROVED or elon.user == request.user:
-        # Agar e'lon egasi bo'lsa yoki tasdiqlangan bo'lsa ko'rsatamiz
-        pass
-    else:
-        # Agar tasdiqlanmagan va egasi bo'lmasa, 404 qaytaramiz
-        # Yoki boshqa sahifaga yo'naltirish mumkin
+    elon = get_object_or_404(Elon.objects.select_related('joylashuvi', 'turi', 'user'), pk=elon_id)
+    if not (elon.status == Elon.StatusChoices.APPROVED or (request.user.is_authenticated and elon.user == request.user)):
         from django.http import Http404
-        raise Http404("E'lon topilmadi yoki hali tasdiqlanmagan.")
-        
+        raise Http404("E'lon topilmadi yoki ko'rishga ruxsat yo'q.")
     context = {'elon': elon}
     return render(request, 'altingiltapp/elon.html', context)
+
 
 
 
@@ -88,7 +94,7 @@ def elon_qoshish(request):
 
     if request.method == 'POST':
         elon_form = ElonForm(request.POST)
-        formset = RasmInlineFormSet(request.POST, request.FILES)
+        formset = RasmInlineFormSet(request.POST, request.FILES, prefix='rasmlar_yangi')
 
         if elon_form.is_valid() and formset.is_valid():
             try:
@@ -109,7 +115,7 @@ def elon_qoshish(request):
             messages.error(request, "Iltimos, formadagi xatoliklarni to'g'rilang.")
     else:
         elon_form = ElonForm()
-        formset = RasmInlineFormSet()
+        formset = RasmInlineFormSet(prefix='rasmlar_yangi')
 
     context = {
         'elon_form': elon_form,

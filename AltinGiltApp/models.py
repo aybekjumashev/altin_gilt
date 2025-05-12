@@ -71,21 +71,37 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         verbose_name_plural = _('foydalanuvchilar')
 
 
+class Shahar(models.Model):
+    nomi = models.CharField(_("Shahar nomi"), max_length=100, unique=True)
+    # slug = models.SlugField(unique=True, blank=True) # Agar URL uchun kerak bo'lsa
+
+    def __str__(self):
+        return self.nomi
+
+    class Meta:
+        verbose_name = _("shahar")
+        verbose_name_plural = _("shaharlar")
+        ordering = ['nomi']
+
+class Tur(models.Model):
+    nomi = models.CharField(_("Mulk turi nomi"), max_length=50, unique=True)
+    # slug = models.SlugField(unique=True, blank=True) # Agar URL uchun kerak bo'lsa
+    # description = models.TextField(_("Tavsif"), blank=True) # Qo'shimcha ma'lumot
+
+    def __str__(self):
+        return self.nomi
+
+    class Meta:
+        verbose_name = _("mulk turi")
+        verbose_name_plural = _("mulk turlari")
+        ordering = ['nomi']
+
+
+
 class Elon(models.Model):
     nomi = models.CharField(max_length=200)
-    joylashuvi = models.CharField(max_length=100)
-    # Keling, 'turi' uchun cheklangan variantlar ro'yxatini yaratamiz
-    class ElonTuri(models.TextChoices):
-        UY = 'Uy', 'Uy'
-        KVARTIRA = 'Kvartira', 'Kvartira'
-        YER = 'Yer', 'Yer'
-        # Agar kerak bo'lsa, boshqa turlarni qo'shishingiz mumkin
-
-    turi = models.CharField(
-        max_length=10,
-        choices=ElonTuri.choices,
-        default=ElonTuri.UY  # Standart qiymat (ixtiyoriy)
-    )
+    joylashuvi = models.ForeignKey(Shahar, on_delete=models.SET_NULL, null=True, blank=False, verbose_name=_("Joylashuvi"))
+    turi = models.ForeignKey(Tur, on_delete=models.SET_NULL, null=True, blank=False, verbose_name=_("Mulk turi"))
     narxi = models.PositiveIntegerField() # Narx manfiy bo'lmasligi uchun
     batafsil = models.TextField()
     # Foydalanuvchi bilan bog'lash (Django User modeli bilan)
@@ -99,7 +115,6 @@ class Elon(models.Model):
         PENDING = 'PENDING', _('Moderatsiyada')
         APPROVED = 'APPROVED', _('Tasdiqlangan')
         REJECTED = 'REJECTED', _('Rad etilgan')
-        DRAFT = 'DRAFT', _('Qoralama') # Agar kerak bo'lsa
 
     status = models.CharField(
         max_length=10,
@@ -122,8 +137,8 @@ class Elon(models.Model):
         # db_table = 'elonlar_jadvali'
         # Tartiblash (masalan, yangilari birinchi)
         ordering = ['-created_at']
-        verbose_name = _('elon')
-        verbose_name_plural = _('elonlar')
+        verbose_name = _('e\'lon')
+        verbose_name_plural = _('e\'lonlar')
 
 
 

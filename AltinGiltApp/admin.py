@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin # Asos UserAdmin
-from .models import CustomUser, Elon, Rasm
+from .models import CustomUser, Elon, Rasm, Shahar, Tur
 from django.utils.translation import gettext_lazy as _
 
 class CustomUserAdmin(BaseUserAdmin):
@@ -42,15 +42,30 @@ class CustomUserAdmin(BaseUserAdmin):
 # Eski admin.site.unregister(User) kerak emas, chunki biz yangi modelni ro'yxatdan o'tkazamiz
 admin.site.register(CustomUser, CustomUserAdmin)
 
+@admin.register(Shahar)
+class ShaharAdmin(admin.ModelAdmin):
+    list_display = ('nomi',)
+    search_fields = ('nomi',)
+    # prepopulated_fields = {'slug': ('nomi',)} # Agar slug maydoni bo'lsa
+
+@admin.register(Tur)
+class TurAdmin(admin.ModelAdmin):
+    list_display = ('nomi',)
+    search_fields = ('nomi',)
+    # prepopulated_fields = {'slug': ('nomi',)} # Agar slug maydoni bo'lsa
+
+
+
 
 # ElonAdmin o'zgarishsiz qolishi mumkin, faqat 'user__username' o'rniga 'user__phone_number' ishlatiladi
 @admin.register(Elon)
 class ElonAdmin(admin.ModelAdmin):
     list_display = ('nomi', 'user', 'status', 'joylashuvi', 'turi', 'narxi', 'created_at', 'updated_at')
     list_filter = ('status', 'turi', 'joylashuvi', 'created_at')
-    search_fields = ('nomi', 'batafsil', 'joylashuvi', 'user__phone_number', 'user__first_name') # O'zgartirildi
+    search_fields = ('nomi', 'batafsil', 'joylashuvi__nomi', 'turi__nomi', 'user__phone_number', 'user__first_name') # O'zgartirildi
     date_hierarchy = 'created_at'
     list_editable = ('status',)
+    autocomplete_fields = ['joylashuvi', 'turi', 'user']
 
     fieldsets = (
         (None, {
@@ -76,13 +91,12 @@ class ElonAdmin(admin.ModelAdmin):
     actions = [make_approved]
 
     def save_model(self, request, obj, form, change):
-        if not obj.user_id: # Agar e'lon yangi qo'shilayotgan bo'lsa va admin user tanlamagan bo'lsa
-            obj.user = request.user # Adminni e'lon egasi qilib belgilash (agar kerak bo'lsa)
-        
+        # if not obj.user_id and hasattr(request, 'user') and request.user.is_authenticated:
+        # obj.user = request.user # Bu qatorni olib tashladim, chunki user tanlanishi kerak
         if 'status' in form.changed_data and obj.status == Elon.StatusChoices.APPROVED:
             obj.moderation_notes = None
         elif 'status' in form.changed_data and obj.status == Elon.StatusChoices.REJECTED and not obj.moderation_notes:
-            from django.contrib import messages # messages ni import qilish
+            from django.contrib import messages
             messages.warning(request, "E'lon rad etildi, lekin sababi ko'rsatilmadi. Iltimos, izoh qoldiring.")
         super().save_model(request, obj, form, change)
 

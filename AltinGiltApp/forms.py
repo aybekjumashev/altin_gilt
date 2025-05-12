@@ -1,6 +1,6 @@
 # AltinGiltApp/forms.py
 from django import forms
-from .models import Elon, Rasm
+from .models import Elon, Rasm, Shahar, Tur
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
@@ -45,23 +45,31 @@ class CustomAuthenticationForm(AuthenticationForm):
 
 
 class ElonForm(forms.ModelForm):
+    # joylashuvi va turi endi ModelChoiceField bo'ladi
+    # Ularni alohida e'lon qilish shart emas, agar standart widget va queryset yetarli bo'lsa.
+    # Agar ularni moslashtirish kerak bo'lsa:
+    # joylashuvi = forms.ModelChoiceField(queryset=Shahar.objects.all(), widget=forms.Select(attrs={'class': 'form-select'}))
+    # turi = forms.ModelChoiceField(queryset=Tur.objects.all(), widget=forms.Select(attrs={'class': 'form-select'}))
+
     class Meta:
         model = Elon
-        fields = ['nomi', 'joylashuvi', 'turi', 'narxi', 'batafsil'] # status va moderation_notes olib tashlandi
+        fields = ['nomi', 'joylashuvi', 'turi', 'narxi', 'batafsil']
         widgets = {
             'nomi': forms.TextInput(attrs={'class': 'form-control'}),
-            'joylashuvi': forms.TextInput(attrs={'class': 'form-control'}),
-            'turi': forms.Select(attrs={'class': 'form-select'}),
+            # 'joylashuvi' va 'turi' uchun standart select widget ishlatiladi. Agar kerak bo'lsa, o'zgartirish mumkin.
+            'joylashuvi': forms.Select(attrs={'class': 'form-select'}), # Explicitly defining for class
+            'turi': forms.Select(attrs={'class': 'form-select'}),       # Explicitly defining for class
             'narxi': forms.NumberInput(attrs={'class': 'form-control'}),
             'batafsil': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
         }
         labels = {
             'nomi': "E'lon nomi",
-            'joylashuvi': "Joylashuvi (shahar/tuman)",
+            'joylashuvi': "Joylashuvi (shahar)", # O'zgartirildi
             'turi': "Mulk turi",
             'narxi': "Narxi (so'mda)",
             'batafsil': "Batafsil ma'lumot",
         }
+
         
 class RasmForm(forms.ModelForm):
     class Meta:
